@@ -118,6 +118,7 @@ const config = {
       conversationConfigOverride: {
         agent: { prompt: { prompt: true }, firstMessage: true, language: true },
         tts: { voiceId: true },
+        conversation: { textOnly: true },
       },
     },
   },

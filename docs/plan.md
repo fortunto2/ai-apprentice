@@ -22,33 +22,32 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 ## Tracks
 
 ### T1 Capture (Sat 16:00–20:00)
-- [ ] scaffold Next.js, Tailwind, pnpm
-- [ ] `/erp` fake AP inbox: invoice list, invoice detail (supplier, amount, cost center select,
+- [x] scaffold Next.js, Tailwind, pnpm
+- [x] `/erp` fake AP inbox: invoice list, invoice detail (supplier, amount, cost center select,
       asset number, approval chain, hold/release, save)
-- [ ] `getDisplayMedia` → canvas → frame diff (pixel delta threshold) → `/api/vision` → events JSON
-- [ ] events timeline panel with thumbnails (store frames in memory / IndexedDB)
-- [ ] ElevenLabs agent: create via API, system prompt (interviewer), client tools
+- [x] `getDisplayMedia` → canvas → frame diff (pixel delta threshold) → `/api/vision` → events JSON
+- [x] events timeline panel with thumbnails (store frames in memory / IndexedDB)
+- [x] ElevenLabs agent: create via API, system prompt (interviewer), client tools
       `screen_event`, `off_the_record`, `end_task`
-- [ ] pause gate: activity tracker + "question budget" (3–5 per 10 min)
+- [x] pause gate: activity tracker + "question budget" (3–5 per 10 min)
 
 ### T2 Map (Sat 20:00–00:00)
-- [ ] `/api/workmap`: events + transcript → Work Map JSON (strict schema) + open gaps
-- [ ] debrief mode: agent gets gaps as dynamic variables, asks ≥3, then teach-back, expert confirms
-- [ ] `/map/[id]` clickable timeline: step → screen moment thumbnail, decision, quote, guardrails
+- [x] `/api/workmap`: events + transcript → Work Map JSON (strict schema) + open gaps
+- [x] debrief mode: agent gets gaps as dynamic variables, asks ≥3, then teach-back, expert confirms
+- [x] `/map/[id]` clickable timeline: step → screen moment thumbnail, decision, quote, guardrails
 
 ### T3 Teach (Sun 00:00–03:30)
-- [ ] tutor agent: Work Map as knowledge; watches `/erp` new case (€7,200 equipment invoice)
-- [ ] guardrail check on `save`: vision event "cost center = 4711 on amount > 5000" → tutor steps in
+- [x] tutor agent: Work Map as knowledge; watches `/erp` new case (€7,200 equipment invoice)
+- [x] guardrail check on `save`: vision event "cost center = 4711 on amount > 5000" → tutor steps in
       before save, replays expert's moment
-- [ ] mastery summary at end
+- [x] mastery summary at end
 
 ### T4 Ship (Sun 03:30–05:30)
-- [ ] privacy demo (mask IBAN/names on screen events; off-the-record)
+- [x] privacy demo (mask IBAN/names on screen events; off-the-record)
 - [ ] public repo fortunto2/ai-apprentice, README, .env.example
 - [ ] pitch video 1 min + demo video 1 min (moonshot slide: always-on apprentice for AV ops)
 - [ ] HackOS + Google Form submit by 05:45
 
 ## Blocked on Rustam
-- ElevenLabs: sign in (Google, rust.starman@gmail.com), redeem Creator code via ElevenLabs Discord
-  `#coupon-codes` → Start Redemption, then create API key → `app/.env.local` `ELEVENLABS_API_KEY`.
+- End-to-end voice test (mic + tab share), see docs/demo-script.md. Agent id agent_4101m4211fv1eqq8k2nzkce7h4zz, signed in as info@superduperai.co (not rust.starman): the Creator code needs the Luma email, so credits may need a second account or a workspace invite.
 - HackOS: create team, declare challenge 01 in Discord (others did it in `#challenge-01-elevenlabs`).

@@ -26,7 +26,8 @@ const VOICE = process.env.AGENT_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL"; // Sarah
 const obj = (properties: Record<string, { type: "string" | "number" | "boolean"; description: string }>, required: string[]) =>
   ({ type: "object" as const, properties, required }) as never;
 
-const agent = await client.conversationalAi.agents.create({
+const existing = process.env.ELEVENLABS_AGENT_ID;
+const config = {
   name: "AI Apprentice",
   tags: ["hack-nation"],
   conversationConfig: {
@@ -38,6 +39,12 @@ const agent = await client.conversationalAi.agents.create({
         llm: LLM,
         temperature: 0.4,
         tools: [
+          {
+            type: "system",
+            name: "skip_turn",
+            description: "Stay silent this turn. Use after a [PAUSE] or [SCREEN] message when there is nothing worth asking yet.",
+            params: { systemToolType: "skip_turn" },
+          },
           {
             type: "client",
             name: "off_the_record",
@@ -114,11 +121,17 @@ const agent = await client.conversationalAi.agents.create({
       },
     },
   },
-});
+} satisfies Parameters<typeof client.conversationalAi.agents.create>[0];
 
-console.log("agent_id:", agent.agentId);
-const envPath = new URL("../.env.local", import.meta.url).pathname;
-if (!readFileSync(envPath, "utf8").includes("ELEVENLABS_AGENT_ID")) {
-  appendFileSync(envPath, `\nELEVENLABS_AGENT_ID=${agent.agentId}\n`);
-  console.log("written to .env.local");
+if (existing) {
+  await client.conversationalAi.agents.update(existing, config);
+  console.log("agent updated:", existing);
+} else {
+  const agent = await client.conversationalAi.agents.create(config);
+  console.log("agent_id:", agent.agentId);
+  const envPath = new URL("../.env.local", import.meta.url).pathname;
+  if (!readFileSync(envPath, "utf8").includes("ELEVENLABS_AGENT_ID")) {
+    appendFileSync(envPath, `\nELEVENLABS_AGENT_ID=${agent.agentId}\n`);
+    console.log("written to .env.local");
+  }
 }

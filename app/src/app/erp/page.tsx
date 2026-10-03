@@ -76,7 +76,6 @@ function ErpInner() {
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoices]);
 
   function update(id: string, patch: Partial<Invoice>, ev?: { field: string; from: string; to: string }) {
@@ -114,6 +113,7 @@ function ErpInner() {
 
   function commitSave(id: string) {
     setInvoices((list) => {
+      if (list.find((i) => i.id === id)?.status === "approved") return list;
       const next = list.map((i) =>
         i.id === id ? { ...i, status: "approved" as const, history: [...i.history, `Approved and saved ${new Date().toISOString().slice(0, 16)}`] } : i,
       );

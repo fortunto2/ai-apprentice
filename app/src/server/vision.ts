@@ -11,6 +11,7 @@ Rules:
 - If nothing meaningful changed: changed=false, events=[].
 - Be concrete: use identifiers you can read (invoice numbers, amounts, cost center codes, supplier/company names).
 - NEVER output personal data: person names, emails, phone numbers, IBANs, street addresses. Write [PERSON], [EMAIL], [IBAN] instead. Company names and invoice numbers are fine. List categories seen in piiSeen.
+- Ignore the dark side panel on the right edge if present: it is the apprentice's own UI (events list, transcript), not the expert's work.
 - One event per change, summary under 20 words. Do not repeat events listed in RECENT EVENTS.`;
 
 export function describeFrameChange(input: { prev: string | null; curr: string; recent: ReadonlyArray<string> }) {

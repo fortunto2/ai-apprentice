@@ -90,22 +90,31 @@ function CapturePage() {
   });
 
   // Pause gate: WHEN to ask. Idle long enough, agent not speaking, something new to ask about,
-  // budget left, spacing respected.
+  // budget left, spacing respected. Reads live values through refs so the timer is created once.
+  const gate = useRef({ activity: watch.activity, idleMs: watch.idleMs, questions, status: conv.status, isSpeaking: conv.isSpeaking });
+  useEffect(() => {
+    gate.current = { activity: watch.activity, idleMs: watch.idleMs, questions, status: conv.status, isSpeaking: conv.isSpeaking };
+  });
+  const convRef = useRef(conv);
+  useEffect(() => {
+    convRef.current = conv;
+  });
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (phaseRef.current !== "capturing" || conv.status !== "connected") return;
-      if (watch.activity !== "idle" || conv.isSpeaking) return;
+      const g = gate.current;
+      if (phaseRef.current !== "capturing" || g.status !== "connected") return;
+      if (g.activity !== "idle" || g.isSpeaking) return;
       const sinceAsk = Date.now() - lastAsk.current;
-      const elapsedMin = Math.max(1, now() / 60_000);
+      const elapsedMin = Math.max(1, (Date.now() - startedAt.current) / 60_000);
       const budget = Math.ceil((BUDGET_PER_10MIN * elapsedMin) / 10) + 1;
-      if (sinceAsk < MIN_GAP_MS || unaskedEvents.current.length === 0 || questions >= budget) return;
+      if (sinceAsk < MIN_GAP_MS || unaskedEvents.current.length === 0 || g.questions >= budget) return;
       const recent = unaskedEvents.current.slice(-6).map((e) => `- ${fmtT(e.t)} ${e.summary}`).join("\n");
       unaskedEvents.current = [];
       lastAsk.current = Date.now();
-      conv.sendUserMessage(`[PAUSE] The expert has been idle for ${Math.round(watch.idleMs / 1000)} s. Recent screen events:\n${recent}\nAsk ONE short question about a reason or a guardrail behind these, or call skip_turn.`);
+      convRef.current.sendUserMessage(`[PAUSE] The expert has been idle for ${Math.round(g.idleMs / 1000)} s. Recent screen events:\n${recent}\nAsk ONE short question about a reason or a guardrail behind these, or call skip_turn.`);
     }, 500);
     return () => window.clearInterval(id);
-  }, [conv, watch.activity, watch.idleMs, questions]);
+  }, []);
 
   async function start() {
     setError(null);
@@ -126,6 +135,7 @@ function CapturePage() {
   }
 
   async function connect(prompt: string, firstMessage: string) {
+    for (let i = 0; i < 20 && conv.status !== "disconnected"; i++) await new Promise((r) => setTimeout(r, 250));
     const r = await fetch("/api/agent/token");
     const data = (await r.json()) as { signedUrl?: string; error?: string };
     if (!data.signedUrl) {

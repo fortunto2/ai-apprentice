@@ -44,9 +44,9 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 
 ### T4 Ship (Sun 03:30–05:30)
 - [x] privacy demo (mask IBAN/names on screen events; off-the-record)
-- [ ] public repo fortunto2/ai-apprentice, README, .env.example
-- [ ] pitch video 1 min + demo video 1 min (moonshot slide: always-on apprentice for AV ops)
-- [ ] HackOS + Google Form submit by 05:45
+- [x] public repo https://github.com/fortunto2/ai-apprentice, README, .env.example
+- [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL. Notes: docs/pitch.md
+- [ ] HackOS (team 'SuperDuper' exists, 1 member) + Google Form submit by 05:45
 
 ## Blocked on Rustam
 - End-to-end voice test (mic + tab share), see docs/demo-script.md. Agent id agent_4101m4211fv1eqq8k2nzkce7h4zz, signed in as info@superduperai.co (not rust.starman): the Creator code needs the Luma email, so credits may need a second account or a workspace invite.

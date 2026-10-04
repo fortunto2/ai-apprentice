@@ -19,6 +19,13 @@
 
 ---
 
+## For judges: two ways in
+
+1. **Full loop with your voice (≈6 min).** Open [`/capture`](https://ai-apprentice-nu.vercel.app/capture), share *this tab*, allow the mic, process the three invoices as Sabine ([`docs/demo-script.md`](docs/demo-script.md)). Say "that's it, I'm done" for the debrief, then open the Work Map and Teach.
+2. **Three minutes, no mic.** [`/map`](https://ai-apprentice-nu.vercel.app/map) → "Load demo Work Map" (a session produced by our text-only eval: real frames and screen recording), click a step to replay the moment, then [`/agent`](https://ai-apprentice-nu.vercel.app/agent) → "Process 5 invoices".
+
+Shared keys have hackathon-size quotas; the **Keys** button on Capture and Teach takes your own ElevenLabs and Gemini keys (browser-only storage).
+
 ## The problem in one scene
 
 Sabine has run accounts payable for 24 years. She moves one invoice to capex without a word, holds a second

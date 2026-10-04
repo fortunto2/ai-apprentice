@@ -59,5 +59,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - Gemini: free-tier 3.5-flash exhausted on both keys; default is now gemini-2.5-flash with key/model rotation.
 - Discord: no reply to the credits posts (#api-credits Hack-Nation, #general-chat ElevenLabs).
 
+- 02:10 PT: /simplify pass applied (shared protocol module, useLatest, frame diff before encode, single retry);
+  screen recording + video replay of moments in Map/Teach; demo recording webm for the fallback session.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

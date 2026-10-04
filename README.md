@@ -33,7 +33,7 @@ Screen recordings capture *what* she clicked. Nobody captured *why*.
 |---|---|---|---|
 | 1 | **Capture** `/capture` | Sabine shares her tab. Every 1.5 s a frame is pixel-diffed; only changes go to the vision model, which returns **events, not video** (PII masked). The ElevenLabs agent stays silent while she types and asks one question at a pause: *"You moved that one to capex. What made you do that?"* | ≥3 questions at natural pauses, ≥1 about a guardrail ✓ |
 | 2 | **Map** `/map` | *"I'm done"* → a schema-guided reasoning pass turns events + transcript into a draft Work Map and a list of open gaps. The agent runs a spoken **debrief**: ≥3 gap questions, then explains the whole process back; Sabine corrects one detail and confirms. Every step links a screen moment, the decision, her quote and the guardrails. | ≥3 follow-ups, teach-back the expert confirms ✓ |
-| 3 | **Teach** `/teach` | Lena opens **INV-4480**, a case Sabine never saw, and reaches for opex. The tutor asks her to predict, then **pauses the save**: *"Sabine would stop here. Why do you think?"*, replays Sabine's screen moment and quote, records what Lena mastered and what to practice. | Catches ≥1 wrong decision before it is saved ✓ |
+| 3 | **Teach** `/teach` | Lena opens **INV-4480**, a case Sabine never saw, and reaches for opex. The tutor asks her to predict, then **pauses the save**: *"Sabine would stop here. Why do you think?"*, replays Sabine's screen moment as **video** (the shared screen is recorded during capture; the player seeks to the step's timestamp) with her quote, and records what Lena mastered and what to practice. | Catches ≥1 wrong decision before it is saved ✓ |
 
 <p align="center">
   <img src="demo/video/shot-capture.jpeg" width="440" alt="Capture: ERP on the left, apprentice panel on the right">
@@ -74,6 +74,9 @@ Screen recordings capture *what* she clicked. Nobody captured *why*.
  │   record_mastery            │                ──▶ agent-guardrails.json export
  └─────────────────────────────┘
 ```
+
+**Screen moments are video, not stills.** `MediaRecorder` records the shared tab alongside the frame diff; every Work Map step
+and every tutor replay seeks the recording to the step's timestamp and plays 8 s. Frames stay as thumbnails and as the fallback.
 
 **Guardrails are machine-checkable.** The synthesis emits each rule twice: in Sabine's words and as a check,
 e.g. `when amount > 5000 → must cost_center = 0400`. The same JSON drives the tutor's interception and exports as

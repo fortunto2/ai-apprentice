@@ -84,5 +84,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 05:56 PT: four minutes before the deadline HackOS still shows submitted · eligible · Revision 6; prod 200 on all
   pages for the whole 4 h watch, ElevenLabs credits untouched (0/10000), no Discord replies. Nothing left to change.
 
+- 06:26 PT: HackOS shows "Submissions are closed" and "submitted a project for this event". Final: Revision 6,
+  3 videos, team photo, repo + live URL; Google Form recorded 00:38 PT. Watch over.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

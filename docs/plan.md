@@ -67,5 +67,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 
 - 01:30 PT: eval re-run after refactor: 23/23. Product demo video v3 uploaded to HackOS (Revision 6, eligible).
 
+- 01:40 PT: Gemini 2.5-flash quota gone on both keys; vision now 2.5-flash-lite with thinking off (3 s on prod,
+  was 19 s), synthesis/agent on 3.8-flash. Teach has a step list with replay buttons; Capture shows the pause-gate state live.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

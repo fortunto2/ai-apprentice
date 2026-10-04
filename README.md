@@ -40,6 +40,9 @@ Screen recordings capture *what* she clicked. Nobody captured *why*.
   <img src="demo/video/shot-capture.jpeg" width="440" alt="Capture: ERP on the left, apprentice panel on the right">
   <img src="demo/video/shot-teach.jpeg" width="440" alt="Teach: tutor coaching a new hire">
 </p>
+<p align="center">
+  <img src="demo/video/shot-agent.jpeg" width="900" alt="Agent: works the routine queue from the Work Map and stops where the expert would ask">
+</p>
 
 ## The Apprentice Test
 

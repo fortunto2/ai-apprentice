@@ -19,19 +19,27 @@ function keys(override?: string): string[] {
   if (!k.length) throw new Error("GEMINI_API_KEY missing");
   return [...new Set(k)];
 }
-const MODEL_FALLBACKS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.8-flash"];
+// Measured 4 Oct 2026: the free tier is 20 requests per model per key per day, so every model that
+// answers our schema is a separate bucket. Cheap and fast first, strongest last.
+const MODEL_FALLBACKS = ["gemini-2.5-flash-lite", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.8-flash"];
+// gemini-3.5-flash-lite rejects thinkingConfig with 400 INVALID_ARGUMENT.
+const supportsThinkingConfig = (model: string) => !model.includes("3.5-flash-lite");
 // Quota (429) and overload (503) both mean "try the next key or model", not "give up".
 const isQuota = (e: unknown) => {
   const st = (e as { status?: number } | null)?.status;
   return st === 429 || st === 503 || /429|503|RESOURCE_EXHAUSTED|quota|UNAVAILABLE|high demand/i.test(String(e));
 };
 
-async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">, override?: string) {
+type GenReq = Parameters<GoogleGenAI["models"]["generateContent"]>[0];
+async function generateWithRotation(model: string, req: Omit<GenReq, "model">, override?: string) {
   let last: unknown;
+  let tried = 0;
   for (const m of [model, ...MODEL_FALLBACKS.filter((x) => x !== model)]) {
+    const config = supportsThinkingConfig(m) ? req.config : { ...req.config, thinkingConfig: undefined };
     for (const key of keys(override)) {
+      tried++;
       try {
-        return await new GoogleGenAI({ apiKey: key }).models.generateContent({ ...req, model: m });
+        return await new GoogleGenAI({ apiKey: key }).models.generateContent({ ...req, config, model: m });
       } catch (e) {
         last = e;
         if (!isQuota(e)) throw e;
@@ -39,7 +47,8 @@ async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGe
       }
     }
   }
-  throw last;
+  const who = override ? "your Gemini key" : "the shared Gemini keys";
+  throw new Error(`Gemini free tier exhausted on ${who} (${tried} model/key pairs, 20 requests per model per day). ${override ? "" : "Add your own key under Keys. "}Last: ${String((last as { message?: string })?.message ?? last).slice(0, 160)}`);
 }
 
 export type Part = { text: string } | { inlineData: { mimeType: string; data: string } };

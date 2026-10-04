@@ -30,7 +30,7 @@ export function SettingsButton() {
           <div className="w-[460px] rounded-xl border border-white/10 bg-zinc-900 p-5 text-zinc-100 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="text-lg font-semibold">Use your own keys</div>
             <p className="mt-1 text-xs text-zinc-400">
-              Stored only in this browser and sent as headers to this app&apos;s own API routes. Leave empty to use the shared demo keys (limited quota).
+              Stored only in this browser and sent as headers to this app&apos;s own API routes. Leave empty to use the shared demo keys. Their Gemini free tier is 20 requests per model per day; a full Capture run needs about 30, so for a real run paste a free key from aistudio.google.com.
             </p>
             <label className="mt-4 block text-xs text-zinc-400">
               ElevenLabs API key

@@ -24,7 +24,7 @@ export default function Home() {
               <b>Three minutes, no mic.</b> Open <Link className="underline" href="/map">Work Map</Link> → &quot;Load demo Work Map&quot; (a session produced by our text-only eval: real frames and recording), click a step to replay the moment, then <Link className="underline" href="/agent">Agent</Link> → &quot;Process 5 invoices&quot;. Teach needs a mic.
             </li>
           </ol>
-          <p className="mt-2 text-xs text-zinc-500">Shared keys have hackathon-size quotas. The <b>Keys</b> button on Capture and Teach takes your own ElevenLabs / Gemini keys (stored in your browser only).</p>
+          <p className="mt-2 text-xs text-zinc-500">Shared keys are free tiers: Gemini allows 20 requests per model per day, a full Capture run needs about 30. The <b>Keys</b> button on Capture and Teach takes your own ElevenLabs / Gemini keys (stored in your browser only); a free Gemini key from aistudio.google.com is enough.</p>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

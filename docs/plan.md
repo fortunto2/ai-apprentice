@@ -70,5 +70,10 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 01:40 PT: Gemini 2.5-flash quota gone on both keys; vision now 2.5-flash-lite with thinking off (3 s on prod,
   was 19 s), synthesis/agent on 3.8-flash. Teach has a step list with replay buttons; Capture shows the pause-gate state live.
 
+- 01:50 PT: measured Gemini free tier = 20 requests/model/key/day (3.8-flash, 2.5-flash, 2.5-flash-lite on key 2 already gone,
+  reset ~17:00 PT). Rotation now covers 5 models x 2 keys; error message tells the visitor to add a key. From now on:
+  no more Gemini smoke tests, the remaining buckets are for the judges. Agent prompt fixed (screen captions carry the
+  supplier; 3.8-flash had called Müller unknown and saved the Kowalski invoice).
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

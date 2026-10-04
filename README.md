@@ -30,7 +30,7 @@ pnpm agent:create            # creates the ElevenLabs agent, writes ELEVENLABS_A
 pnpm dev
 ```
 
-Then `http://localhost:3000`. Demo walkthrough: `docs/demo-script.md`. Brief: `docs/challenge-01-elevenlabs.txt`.
+Then `http://localhost:3000`. Live: https://ai-apprentice-nu.vercel.app. Demo walkthrough: `docs/demo-script.md`. Brief: `docs/challenge-01-elevenlabs.txt`.
 
 ## Layout
 

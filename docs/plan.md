@@ -45,7 +45,7 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 ### T4 Ship (Sun 03:30–05:30)
 - [x] privacy demo (mask IBAN/names on screen events; off-the-record)
 - [x] public repo https://github.com/fortunto2/ai-apprentice, README, .env.example
-- [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL. Notes: docs/pitch.md
+- [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL (https://ai-apprentice-nu.vercel.app). Notes: docs/pitch.md
 - [ ] HackOS (team 'SuperDuper' exists, 1 member) + Google Form submit by 05:45
 
 ## Blocked on Rustam

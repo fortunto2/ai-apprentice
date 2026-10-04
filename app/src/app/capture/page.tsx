@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { ActivityPill, EventList, Orb, Transcript } from "@/components/panel";
-import { INTERVIEWER_PROMPT, debriefPrompt } from "@/lib/prompts";
+import { LANG_NAMES, debriefPrompt, interviewerPrompt } from "@/lib/prompts";
 import type { ScreenEvent, TranscriptLine, WorkMap } from "@/lib/schemas";
 import { fmtT, saveSession, type Session } from "@/lib/session-store";
 import { useScreenWatch } from "@/lib/use-screen-watch";
@@ -17,6 +17,11 @@ type Phase = "idle" | "capturing" | "synthesizing" | "debrief" | "finalizing" | 
 
 const MIN_GAP_MS = 40_000; // between questions
 const BUDGET_PER_10MIN = 5;
+const GREETING: Record<string, string> = {
+  en: "Hi, I'm your apprentice today. I'll watch and stay quiet while you work. Go ahead whenever you're ready.",
+  ru: "Привет, я сегодня ваш ученик. Буду смотреть и молчать, пока вы работаете. Начинайте, когда будете готовы.",
+  de: "Hallo, ich bin heute Ihr Lehrling. Ich schaue zu und bleibe still, während Sie arbeiten. Fangen Sie an, wann Sie möchten.",
+};
 
 function CapturePage() {
   const startedAt = useRef(0);
@@ -25,6 +30,7 @@ function CapturePage() {
   const transcriptRef = useRef<TranscriptLine[]>([]);
   const [questions, setQuestions] = useState(0);
   const [mask, setMask] = useState(false);
+  const [lang, setLang] = useState<"en" | "ru" | "de">("en");
   const [workMap, setWorkMap] = useState<WorkMap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<ScreenEvent | null>(null);
@@ -130,7 +136,7 @@ function CapturePage() {
       setError(`Screen share: ${String(e)}`);
       return;
     }
-    await connect(INTERVIEWER_PROMPT, "Hi, I'm your apprentice today. I'll watch and stay quiet while you work. Go ahead whenever you're ready.");
+    await connect(interviewerPrompt(lang), GREETING[lang]);
     setPhase("capturing");
   }
 
@@ -146,7 +152,7 @@ function CapturePage() {
     conv.startSession({
       signedUrl: data.signedUrl,
       connectionType: "websocket",
-      overrides: { agent: { prompt: { prompt }, firstMessage, language: "en" } },
+      overrides: { agent: { prompt: { prompt }, firstMessage, language: lang } },
     });
   }
 
@@ -182,7 +188,7 @@ function CapturePage() {
     await saveSession({ ...snapshot(), workMap: data.workMap });
     debriefStartT.current = now();
     const gap0 = data.workMap.openGaps[0] ?? "which of these steps would a new hire most likely get wrong?";
-    await connect(debriefPrompt(data.workMap), `Thanks, the task is done. Let me close a few gaps before I explain it back. First: ${gap0}`);
+    await connect(debriefPrompt(data.workMap, lang), lang === "en" ? `Thanks, the task is done. Let me close a few gaps before I explain it back. First: ${gap0}` : lang === "ru" ? `Спасибо, задача закончена. Закрою несколько пробелов, прежде чем пересказать. Первый вопрос: ${gap0}` : `Danke, die Aufgabe ist erledigt. Ich schließe ein paar Lücken, bevor ich es zurückerkläre. Erste Frage: ${gap0}`);
     setPhase("debrief");
   }
 
@@ -257,6 +263,15 @@ function CapturePage() {
             >
               Off the record
             </button>
+          )}
+          {phase === "idle" && (
+            <select value={lang} onChange={(e) => setLang(e.target.value as "en" | "ru" | "de")} className="rounded-md border border-white/15 bg-zinc-900 px-2 py-1.5 text-sm" title="Language the expert speaks; the Work Map and the tutor stay in English">
+              {Object.entries(LANG_NAMES).map(([k, v]) => (
+                <option key={k} value={k}>
+                  Expert speaks {v}
+                </option>
+              ))}
+            </select>
           )}
           <button onClick={toggleMask} className={`rounded-md border px-3 py-1.5 text-sm ${mask ? "border-emerald-400 text-emerald-300" : "border-white/15 hover:bg-white/5"}`}>
             {mask ? "PII masked" : "Mask PII"}

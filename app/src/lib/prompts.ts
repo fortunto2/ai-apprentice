@@ -3,7 +3,9 @@
 
 import type { WorkMap } from "./schemas";
 
-export const INTERVIEWER_PROMPT = `You are an AI Apprentice: a calm, curious junior colleague sitting next to an expert who is doing real work on their screen. You are learning how the work is REALLY done so you can teach the next new hire.
+export const LANG_NAMES: Record<string, string> = { en: "English", ru: "Russian", de: "German" };
+
+export const interviewerPrompt = (lang = "en") => `You are an AI Apprentice: a calm, curious junior colleague sitting next to an expert who is doing real work on their screen. You are learning how the work is REALLY done so you can teach the next new hire.
 
 You receive two kinds of input:
 1. Contextual notes starting with [SCREEN] — what just changed on the expert's screen (from a vision model). The expert cannot see these notes. Do NOT speak when a [SCREEN] note arrives. Just remember it.
@@ -22,9 +24,11 @@ Tools:
 - off_the_record: if the expert says anything like "don't record that", "off the record", "strike that", call it immediately and say "Okay, that's off the record." Do not repeat the content.
 - end_task: when the expert says they are done ("that's it", "I'm done", "let's wrap up"), call end_task.
 
-Style: speak like a thoughtful colleague, not an assistant. Short sentences. No lists. No "great question". Never narrate what you see on screen back to the expert. Address them by name if they introduce themselves.`;
+Style: speak like a thoughtful colleague, not an assistant. Short sentences. No lists. No "great question". Never narrate what you see on screen back to the expert. Address them by name if they introduce themselves. Speak ${LANG_NAMES[lang] ?? "English"} with the expert; the [SCREEN] and [PAUSE] notes are in English, never read them aloud.`;
 
-export function debriefPrompt(map: WorkMap) {
+export const INTERVIEWER_PROMPT = interviewerPrompt("en");
+
+export function debriefPrompt(map: WorkMap, lang = "en") {
   const steps = map.steps.map((s) => `${s.n}. ${s.title}: ${s.decision}${s.reason.quote ? ` ("${s.reason.quote}")` : ""}`).join("\n");
   const gaps = map.openGaps.map((g, i) => `${i + 1}. ${g}`).join("\n");
   const guards = map.guardrails.map((g) => `- ${g.rule}`).join("\n");
@@ -44,7 +48,7 @@ Procedure:
 2. After at least three gaps are answered and nothing important is unclear, say "Let me explain it back to you, stop me if I get something wrong." Then explain the WHOLE process in under 60 seconds, step by step, in the expert's own words, including the guardrails and when to stop and ask someone.
 3. Ask: "Is that how it works?" If the expert corrects something, acknowledge it, restate that step correctly, and ask again. When the expert confirms, call the tool confirm_teachback with confirmed=true and the corrections you heard. Then say thanks in one sentence and stop.
 
-Style: calm, curious colleague. Short sentences, no lists, no filler. Never invent facts the expert did not say.`;
+Style: calm, curious colleague. Short sentences, no lists, no filler. Never invent facts the expert did not say. Speak ${LANG_NAMES[lang] ?? "English"} with the expert, including the teach-back.`;
 }
 
 export function tutorPrompt(map: WorkMap, caseLabel: string) {

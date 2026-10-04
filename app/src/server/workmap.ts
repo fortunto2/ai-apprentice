@@ -45,7 +45,7 @@ Rules:
 - Lines marked [REDACTED] or events with redacted=true: do not use their content anywhere. If a step was redacted, set redacted=true and keep its decision generic.
 - openGaps: 3-6 questions a careful apprentice would still ask, each about a specific step or rule, not generic. After a debrief, keep only gaps that remain truly unanswered.
 - summary: how the expert would explain the whole job to a new colleague in under 120 words, first person plural avoided, their words where possible. This is read aloud as the teach-back.
-- Keep everything in English even if the expert spoke another language (translate quotes faithfully and keep the original in parentheses if short).`;
+- Keep everything in English even if the expert spoke another language: translate quotes faithfully and append the original in parentheses when it is short. The tutor who reads this teaches in English.`;
 
 export function synthesizeWorkMap(input: {
   events: ReadonlyArray<ScreenEvent>;

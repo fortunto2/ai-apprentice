@@ -194,7 +194,14 @@ function TeachPage() {
   }
 
   async function useDemo() {
-    const s: Session = { id: "demo", startedAt: Date.now(), events: [], frames: [], transcript: [], workMap: DEMO_WORKMAP };
+    // Prefer the session produced by the eval run (real frames + events); fall back to the static map.
+    let s: Session = { id: "demo", startedAt: Date.now(), events: [], frames: [], transcript: [], workMap: DEMO_WORKMAP };
+    try {
+      const r = await fetch("/demo-session.json", { cache: "no-store" });
+      if (r.ok) s = (await r.json()) as Session;
+    } catch {
+      /* static fallback */
+    }
     await saveSession(s);
     setSession(s);
   }

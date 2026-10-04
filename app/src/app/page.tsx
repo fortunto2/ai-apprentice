@@ -4,6 +4,7 @@ const steps = [
   { href: "/capture", n: "1", title: "Capture", text: "The expert shares the screen and works. The apprentice watches, stays quiet, asks why at pauses, then runs a debrief and teaches back." },
   { href: "/map", n: "2", title: "Work Map", text: "Clickable timeline: every step with its screen moment, the decision, the reason in the expert's words, and the guardrails." },
   { href: "/teach", n: "3", title: "Teach", text: "A new hire works a case the expert never showed. The tutor coaches in the expert's words and steps in before a guardrail breaks." },
+  { href: "/agent", n: "+", title: "Agent", text: "Stretch: the Work Map's guardrails loaded into an agent. It works the routine queue and stops exactly where the expert would stop and ask." },
 ];
 
 export default function Home() {
@@ -12,7 +13,7 @@ export default function Home() {
       <div className="mx-auto max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight">AI Apprentice</h1>
         <p className="mt-2 max-w-xl text-zinc-400">Watches how an expert really does screen work, asks why at the right moment, maps the workflow with its guardrails and teaches the next hire. Hack-Nation 7 · ElevenLabs challenge.</p>
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s) => (
             <Link key={s.href} href={s.href} className="rounded-xl border border-white/10 bg-zinc-900 p-5 transition hover:border-white/25 hover:bg-zinc-800">
               <div className="text-xs text-zinc-500">Module {s.n}</div>

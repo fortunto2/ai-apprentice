@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
+  AGENT_INVOICES,
   COST_CENTERS,
   EXPERT_INVOICES,
   NEWHIRE_INVOICES,
@@ -29,9 +30,10 @@ const eur = (n: number) => n.toLocaleString("en-IE", { style: "currency", curren
 
 function ErpInner() {
   const params = useSearchParams();
-  const mode = params.get("mode") === "newhire" ? "newhire" : "expert";
+  const modeParam = params.get("mode");
+  const mode = modeParam === "newhire" ? "newhire" : modeParam === "agent" ? "agent" : "expert";
   const [invoices, setInvoices] = useState<Invoice[]>(() =>
-    (mode === "newhire" ? NEWHIRE_INVOICES : EXPERT_INVOICES).map((i) => ({ ...i })),
+    (mode === "newhire" ? NEWHIRE_INVOICES : mode === "agent" ? AGENT_INVOICES : EXPERT_INVOICES).map((i) => ({ ...i })),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mask, setMask] = useState(false);
@@ -80,6 +82,25 @@ function ErpInner() {
       if (m.type === "tutor:allow-save") {
         setBlocked(null);
         if (pendingSave.current) commitSave(pendingSave.current.invoice);
+      }
+      if (m.type === "agent:open") open(m.invoice);
+      if (m.type === "agent:apply") {
+        const inv = invoices.find((i) => i.id === m.invoice);
+        if (!inv) return;
+        const p = m.patch;
+        const next: Invoice = {
+          ...inv,
+          costCenter: (p.cost_center as CostCenter | undefined) ?? inv.costCenter,
+          assetNumber: p.asset_number ?? inv.assetNumber,
+          approval: (p.approval as Approval | undefined) ?? inv.approval,
+          note: p.note ?? inv.note,
+        };
+        setInvoices((list) => list.map((i) => (i.id === inv.id ? next : i)));
+        if (p.cost_center && p.cost_center !== inv.costCenter) postToParent({ type: "erp:event", kind: "change", summary: `${inv.id}: cost center changed from "${inv.costCenter}" to "${p.cost_center}"`, invoice: inv.id, field: "cost center", from: inv.costCenter, to: p.cost_center, state: toState(next) });
+        if (p.approval && p.approval !== inv.approval) postToParent({ type: "erp:event", kind: "change", summary: `${inv.id}: approval changed from "${inv.approval}" to "${p.approval}"`, invoice: inv.id, field: "approval", from: inv.approval, to: p.approval, state: toState(next) });
+        if (p.asset_number) postToParent({ type: "erp:event", kind: "change", summary: `${inv.id}: asset number set to ${p.asset_number}`, invoice: inv.id, field: "asset number", from: "", to: p.asset_number, state: toState(next) });
+        if (m.action === "save") setTimeout(() => commitSave(inv.id), 400);
+        if (m.action === "hold") setTimeout(() => holdInvoice(next), 400);
       }
     };
     window.addEventListener("message", onMsg);
@@ -159,8 +180,11 @@ function ErpInner() {
   }
 
   function hold() {
-    if (!selected) return;
-    const inv = { ...selected, status: "held" as const, history: [...selected.history, "Put on hold"] };
+    if (selected) holdInvoice(selected);
+  }
+
+  function holdInvoice(target: Invoice) {
+    const inv = { ...target, status: "held" as const, history: [...target.history, "Put on hold"] };
     setInvoices((list) => list.map((i) => (i.id === inv.id ? inv : i)));
     postToParent({
       type: "erp:event",
@@ -179,7 +203,7 @@ function ErpInner() {
         <span className="font-semibold tracking-wide">ERPlite · Accounts Payable</span>
         <span className="text-white/60">Invoice workbench</span>
         <span className="ml-auto text-white/60">
-          {mode === "newhire" ? "User: Lena K. (AP trainee)" : "User: Sabine R. (AP lead)"} · Period 12/2026 · Close in 2 days
+          {mode === "newhire" ? "User: Lena K. (AP trainee)" : mode === "agent" ? "User: AP agent (supervised by Sabine's Work Map)" : "User: Sabine R. (AP lead)"} · Period 12/2026 · Close in 2 days
         </span>
       </header>
       <div className="grid grid-cols-[320px_1fr] gap-3 p-3">

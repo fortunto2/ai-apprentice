@@ -52,6 +52,7 @@ export default function MapPage() {
         <div className="ml-auto flex gap-2">
           <button onClick={() => download("work-map.json", map)} className="rounded border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5">Export Work Map</button>
           <button onClick={() => download("agent-guardrails.json", exportAgentGuardrails(map.guardrails, map.title))} className="rounded border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5">Export agent guardrails</button>
+          <Link href="/agent" className="rounded border border-amber-400/50 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/10">Let an agent do the routine →</Link>
           <Link href="/teach" className="rounded bg-sky-500 px-3 py-1.5 text-xs font-medium text-black hover:bg-sky-400">Teach a new hire →</Link>
         </div>
       </header>

@@ -278,6 +278,11 @@ function CapturePage() {
         {error && <div className="mx-4 mt-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>}
         {phase === "synthesizing" && <div className="mx-4 mt-2 text-xs text-zinc-400">Merging {watch.events.length} screen events and the transcript into a Work Map draft…</div>}
         {phase === "finalizing" && <div className="mx-4 mt-2 text-xs text-zinc-400">Folding the debrief into the Work Map…</div>}
+        {watch.visionError && phase === "capturing" && (
+          <div className="mx-4 mt-2 rounded border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+            Vision model: {watch.visionError.slice(0, 220)} Screen events still arrive from the sandbox itself; questions keep working.
+          </div>
+        )}
         {watch.piiSeen.size > 0 && (
           <div className="mx-4 mt-2 text-[11px] text-amber-300/80">
             Personal data seen on screen ({[...watch.piiSeen].join(", ")}) was masked before it reached the record.

@@ -21,6 +21,7 @@ export type ScreenWatch = {
   idleMs: number;
   lastState: ErpState | null;
   piiSeen: Set<string>;
+  visionError: string | null; // last vision failure, so an empty quota is visible instead of silent
   start: () => Promise<MediaStream>;
   stop: () => void;
   markActivity: (a: Exclude<Activity, "idle">) => void;
@@ -40,6 +41,8 @@ export function useScreenWatch(opts: {
   const [idleMs, setIdleMs] = useState(0);
   const [lastState, setLastState] = useState<ErpState | null>(null);
   const [piiSeen] = useState(() => new Set<string>());
+  const [visionError, setVisionError] = useState<string | null>(null);
+  const pausedUntil = useRef(0); // after a quota error, stop paying for 429s for a while
 
   const capture = useRef<FrameCapture | null>(null);
   const lastSent = useRef<Frame | null>(null);
@@ -113,10 +116,11 @@ export function useScreenWatch(opts: {
   const analyze = useCallback(
     async (frame: Frame) => {
       if (inflight.current) return;
+      setFrames((f) => [...f.slice(-400), frame]);
+      if (Date.now() < pausedUntil.current) return;
       inflight.current = true;
       const prev = lastSent.current;
       lastSent.current = frame;
-      setFrames((f) => [...f.slice(-400), frame]);
       try {
         const res = await fetch("/api/vision", {
           method: "POST",
@@ -126,8 +130,11 @@ export function useScreenWatch(opts: {
         const data = (await res.json()) as ({ ok: true } & VisionResult) | { ok: false; error: string };
         if (!data.ok) {
           console.warn("vision", data.error);
+          setVisionError(data.error);
+          if (/exhausted|quota|429/i.test(data.error)) pausedUntil.current = Date.now() + 60_000;
           return;
         }
+        setVisionError(null);
         data.piiSeen.forEach((p) => piiSeen.add(p));
         // Dedupe against DOM events: same invoice+field+to within the last 6 s is the same thing.
         const recent = eventsRef.current.filter((e) => frame.t - e.t < 6000);
@@ -150,6 +157,7 @@ export function useScreenWatch(opts: {
         );
       } catch (e) {
         console.warn("vision failed", e);
+        setVisionError(String(e));
       } finally {
         inflight.current = false;
       }
@@ -198,5 +206,5 @@ export function useScreenWatch(opts: {
     seq.current = 0;
   }, []);
 
-  return { events, frames, activity, idleMs, lastState, piiSeen, start, stop, markActivity, redactSince, reset };
+  return { events, frames, activity, idleMs, lastState, piiSeen, visionError, start, stop, markActivity, redactSince, reset };
 }

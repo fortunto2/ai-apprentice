@@ -12,6 +12,7 @@
 import { Effect, Schema as S } from "effect";
 import { SYNTH_MODEL, generateStructured } from "./llm";
 import { ScreenEvent, TranscriptLine, WorkMap } from "@/lib/schemas";
+import { fmtT } from "@/lib/time";
 
 // Analysis cascade: reason first, then emit the Work Map. One call, no prompt chain.
 export const WorkMapAnalysis = S.Struct({
@@ -55,12 +56,11 @@ export function synthesizeWorkMap(input: {
   expertName?: string;
   apiKey?: string;
 }) {
-  const fmt = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
   const events = input.events
-    .map((e) => `${fmt(e.t)} t=${e.t} id=${e.id} frame=${e.frameId ?? "-"} [${e.source}/${e.kind}] ${e.redacted ? "[REDACTED]" : e.summary}`)
+    .map((e) => `${fmtT(e.t)} t=${e.t} id=${e.id} frame=${e.frameId ?? "-"} [${e.source}/${e.kind}] ${e.redacted ? "[REDACTED]" : e.summary}`)
     .join("\n");
   const lines = (tr: ReadonlyArray<TranscriptLine>) =>
-    tr.map((l) => `${fmt(l.t)} t=${l.t} ${l.role.toUpperCase()}: ${l.redacted ? "[REDACTED]" : l.text}`).join("\n");
+    tr.map((l) => `${fmtT(l.t)} t=${l.t} ${l.role.toUpperCase()}: ${l.redacted ? "[REDACTED]" : l.text}`).join("\n");
 
   const parts = [
     { text: `EXPERT: ${input.expertName ?? "the expert"}\n\nSCREEN EVENTS:\n${events || "(none)"}` },

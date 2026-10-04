@@ -63,6 +63,22 @@ and a polished Work Map. Possible demo workflow choices (brief says bring your o
 Also relevant to Epiphan (his client: video capture hardware) — a capture→map→teach loop for
 AV operators is a credible moonshot.
 
+## Reuse our own video stack (pre-existing, open about it in README)
+
+Rustam's Rust video workspaces already do the hard parts of Capture and Map:
+- `~/startups/active/life2film/video-analyzer` — frame-level analysis: sampling, scene/shot detection
+  (`va-scene`), motion/temporal features, STT (`va-stt`), agent (`va-agent`). Domain model
+  `Segment → Frames → Moment → Shot → Clip (OTIO)` maps directly onto "screen moments".
+- `~/startups/active/video-generator-agent/crates/` — shared `video-core` (Timeline, Shot, frame),
+  `video-otio` (OTIO timelines), `video-render` (ffmpeg helpers: cut a clip at a timestamp).
+How to use them here:
+- **Capture**: only send a frame to the vision model when `va-scene`/frame-diff says the screen changed —
+  cheaper and gives natural "moments".
+- **Work Map**: store each step as an OTIO clip (source range = screen moment) → the timeline is
+  exportable, and `video-render` cuts the 5–10 s replay clips the tutor plays back in Teach.
+- Don't fight the stack under time pressure: if wiring Rust into the web app costs more than an hour,
+  call it as a CLI (`cargo run -p …` / built binary) from the server, or reimplement the frame diff in TS.
+
 ## Credits & accounts (claimed in HackOS → Credits & Codes)
 
 - **ElevenLabs Creator 1 month**: code comes from ElevenLabs' redemption Discord channel; must use the

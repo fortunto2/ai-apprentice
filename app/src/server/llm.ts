@@ -11,7 +11,6 @@ export class LlmError extends Data.TaggedError("LlmError")<{ readonly stage: str
 export class DecodeError extends Data.TaggedError("DecodeError")<{ readonly stage: string; readonly raw: string; readonly cause: unknown }> {}
 
 // Free-tier quotas are per key and per model, so a 429 rotates to the next key, then the next model.
-const clients = new Map<string, GoogleGenAI>();
 function keys(override?: string): string[] {
   // A visitor's own key never falls through to the shared ones: their quota, their problem.
   if (override) return [override];
@@ -19,24 +18,15 @@ function keys(override?: string): string[] {
   if (!k.length) throw new Error("GEMINI_API_KEY missing");
   return [...new Set(k)];
 }
-function gemini(apiKey: string, cache = true) {
-  if (!cache) return new GoogleGenAI({ apiKey });
-  let c = clients.get(apiKey);
-  if (!c) {
-    c = new GoogleGenAI({ apiKey });
-    clients.set(apiKey, c);
-  }
-  return c;
-}
-const MODEL_FALLBACKS = (process.env.MODEL_FALLBACKS ?? "gemini-3.8-flash,gemini-3.5-flash-lite").split(",").filter(Boolean);
-const isQuota = (e: unknown) => /429|RESOURCE_EXHAUSTED|quota/i.test(String(e));
+const MODEL_FALLBACKS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+const isQuota = (e: unknown) => (e as { status?: number } | null)?.status === 429 || /429|RESOURCE_EXHAUSTED|quota/i.test(String(e));
 
 async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">, override?: string) {
   let last: unknown;
   for (const m of [model, ...MODEL_FALLBACKS.filter((x) => x !== model)]) {
     for (const key of keys(override)) {
       try {
-        return await gemini(key, key !== override).models.generateContent({ ...req, model: m });
+        return await new GoogleGenAI({ apiKey: key }).models.generateContent({ ...req, model: m });
       } catch (e) {
         last = e;
         if (!isQuota(e)) throw e;
@@ -62,6 +52,17 @@ export function toGeminiSchema<S extends Schema.ConstraintDecoder<unknown>>(sche
   return { ...(doc.schema as Record<string, unknown>), ...defs };
 }
 
+// JSON Schema and decoder per schema object, compiled once.
+const compiled = new WeakMap<object, { jsonSchema: Record<string, unknown>; decode: (u: unknown) => unknown }>();
+function compile<S extends Schema.ConstraintDecoder<unknown>>(schema: S) {
+  let c = compiled.get(schema);
+  if (!c) {
+    c = { jsonSchema: toGeminiSchema(schema), decode: Schema.decodeUnknownSync(schema) };
+    compiled.set(schema, c);
+  }
+  return c;
+}
+
 export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(opts: {
   stage: string;
   model: string;
@@ -72,8 +73,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
   timeoutMs?: number;
   apiKey?: string;
 }): Effect.Effect<S["Type"], LlmError | DecodeError> {
-  const jsonSchema = toGeminiSchema(opts.schema);
-  const decode = Schema.decodeUnknownSync(opts.schema);
+  const { jsonSchema, decode } = compile(opts.schema);
   const call = Effect.tryPromise({
     try: () =>
       generateWithRotation(opts.model, {
@@ -92,7 +92,8 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
       duration: Duration.millis(opts.timeoutMs ?? 25_000),
       orElse: () => Effect.fail(new LlmError({ stage: opts.stage, cause: "timeout" })),
     }),
-    Effect.retry({ times: 2, schedule: Schedule.exponential("600 millis") }),
+    // Quota is handled by the rotation above; one retry covers a transient network error.
+    Effect.retry({ times: 1, schedule: Schedule.exponential("600 millis"), while: (e) => !isQuota(e.cause) }),
     Effect.flatMap((res) => {
       const raw = res.text ?? "";
       return Effect.try({

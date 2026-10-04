@@ -3,6 +3,8 @@
 // Bring your own keys. Stored in this browser only (localStorage), sent as request headers to our
 // own API routes, never persisted server-side. Lets a judge run the demo on their own credits.
 
+import { KEY_HEADERS } from "./byok-headers";
+
 export type Keys = { elevenlabs?: string; elevenlabsAgent?: string; gemini?: string };
 
 const KEY = "apprentice:keys";
@@ -27,9 +29,9 @@ export function saveKeys(k: Keys) {
 export function keyHeaders(): Record<string, string> {
   const k = loadKeys();
   const h: Record<string, string> = {};
-  if (k.elevenlabs) h["x-elevenlabs-key"] = k.elevenlabs;
-  if (k.elevenlabsAgent) h["x-elevenlabs-agent"] = k.elevenlabsAgent;
-  if (k.gemini) h["x-gemini-key"] = k.gemini;
+  if (k.elevenlabs) h[KEY_HEADERS.elevenlabs] = k.elevenlabs;
+  if (k.elevenlabsAgent) h[KEY_HEADERS.elevenlabsAgent] = k.elevenlabsAgent;
+  if (k.gemini) h[KEY_HEADERS.gemini] = k.gemini;
   return h;
 }
 

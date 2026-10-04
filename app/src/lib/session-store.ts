@@ -28,7 +28,8 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveSession(s: Session, key = CURRENT) {
+export async function saveSession(session: Session, key = CURRENT) {
+  const s = { ...session, frames: referencedFrames(session) };
   const db = await openDb();
   await new Promise<void>((res, rej) => {
     const tx = db.transaction(STORE, "readwrite");
@@ -47,11 +48,12 @@ export async function loadSession(key = CURRENT): Promise<Session | null> {
   });
 }
 
-export function newSession(): Session {
-  return { id: `s${Date.now().toString(36)}`, startedAt: Date.now(), events: [], frames: [], transcript: [] };
-}
+export { fmtT } from "./time";
 
-export const fmtT = (ms: number) => {
-  const s = Math.max(0, Math.round(ms / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
+// Only frames that an event or a Work Map step points at are ever shown again.
+export function referencedFrames(s: Session): Frame[] {
+  const ids = new Set<string>();
+  for (const e of s.events) if (e.frameId) ids.add(e.frameId);
+  for (const st of s.workMap?.steps ?? []) if (st.screenMoment.frameId) ids.add(st.screenMoment.frameId);
+  return s.frames.filter((f) => ids.has(f.id));
+}

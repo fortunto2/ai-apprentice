@@ -2,6 +2,7 @@
 // Used as a fallback so Map and Teach can be shown without a fresh capture.
 
 import type { WorkMap } from "./schemas";
+import { saveSession, type Session } from "./session-store";
 
 export const DEMO_WORKMAP: WorkMap = {
   title: "Invoice coding and approval, month-end close",
@@ -25,3 +26,16 @@ export const DEMO_WORKMAP: WorkMap = {
   confirmedByExpert: true,
   corrections: [],
 };
+
+// Prefer the session produced by the eval run (real frames + events); fall back to the static map.
+export async function loadDemoSession(): Promise<Session> {
+  let s: Session = { id: "demo", startedAt: Date.now(), events: [], frames: [], transcript: [], workMap: DEMO_WORKMAP };
+  try {
+    const r = await fetch("/demo-session.json");
+    if (r.ok) s = (await r.json()) as Session;
+  } catch {
+    /* static fallback */
+  }
+  await saveSession(s);
+  return s;
+}

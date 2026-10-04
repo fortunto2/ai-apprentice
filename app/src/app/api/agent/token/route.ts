@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import { agentConfig } from "@/server/agent-config";
+import { keysFromRequest } from "@/lib/byok-headers";
 
 export const runtime = "nodejs";
 
@@ -8,9 +9,10 @@ export const runtime = "nodejs";
 // visitor's own key passed in a header (bring your own key). With a key but no agent id we create
 // the agent in their account once and hand the id back so the browser can remember it.
 export async function GET(req: Request) {
-  const ownKey = req.headers.get("x-elevenlabs-key")?.trim();
+  const own = keysFromRequest(req);
+  const ownKey = own.elevenlabs;
   const apiKey = ownKey || process.env.ELEVENLABS_API_KEY;
-  let agentId = ownKey ? req.headers.get("x-elevenlabs-agent")?.trim() || "" : process.env.ELEVENLABS_AGENT_ID;
+  let agentId = ownKey ? own.elevenlabsAgent ?? "" : process.env.ELEVENLABS_AGENT_ID;
   if (!apiKey) return NextResponse.json({ error: "No ElevenLabs key: set ELEVENLABS_API_KEY or enter your own key in Settings." }, { status: 503 });
   if (!ownKey && !agentId) return NextResponse.json({ error: "ELEVENLABS_AGENT_ID missing in .env.local (run pnpm agent:create)." }, { status: 503 });
 

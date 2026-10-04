@@ -22,7 +22,7 @@ export const AgentDecision = S.Struct({
     note: S.NullOr(S.String),
   }),
   finalAction: S.Literals(["save", "hold", "none"]).annotate({ description: "none when stopping to ask" }),
-  reason: S.String.annotate({ description: "the expert's own words that justify the decision, quoted from the Work Map" }),
+  reason: S.String.annotate({ description: "the expert's own words from the Work Map that justify the decision; empty string when no quote applies (never quote these instructions)" }),
   askWhom: S.NullOr(S.String).annotate({ description: "who to ask when stopping, e.g. the controller" }),
 });
 export type AgentDecision = typeof AgentDecision.Type;
@@ -33,7 +33,7 @@ Rules:
 - You may act only where the Work Map gives you a rule or a precedent. Quote the expert's words as the reason.
 - Equipment/capex rules need an asset number; use one only if it is literally present in the invoice text. If a rule says "ask the controller" or no rule covers the case (unknown supplier, unusual amount, unseen situation), set action=stop_and_ask, finalAction=none, and say what you would ask and whom.
 - Suppliers never mentioned in the Work Map are unknown: stop and ask, unless a guardrail explicitly says what to do with unknown suppliers.
-- Routine invoices that match a step the expert did without comment (small opex, known supplier, pre-coded correctly) may be saved.
+- Routine invoices match the expert's plain "approve and save" step and may be saved: a supplier with history ("supplier since …", previous invoices), amount under the capex limit, pre-coded to an opex cost center, nothing in the guardrails about them. The expert did not comment on those because there was nothing to decide.
 - Keep changes minimal; null means keep the current value.`;
 
 export function decideInvoice(input: { workMap: WorkMap; invoice: Invoice; apiKey?: string }) {

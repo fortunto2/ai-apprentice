@@ -19,7 +19,11 @@ function keys(override?: string): string[] {
   return [...new Set(k)];
 }
 const MODEL_FALLBACKS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
-const isQuota = (e: unknown) => (e as { status?: number } | null)?.status === 429 || /429|RESOURCE_EXHAUSTED|quota/i.test(String(e));
+// Quota (429) and overload (503) both mean "try the next key or model", not "give up".
+const isQuota = (e: unknown) => {
+  const st = (e as { status?: number } | null)?.status;
+  return st === 429 || st === 503 || /429|503|RESOURCE_EXHAUSTED|quota|UNAVAILABLE|high demand/i.test(String(e));
+};
 
 async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">, override?: string) {
   let last: unknown;

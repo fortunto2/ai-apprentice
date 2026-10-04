@@ -51,7 +51,7 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 ## Mandate (Sat 17:50 PT): Rustam left, said «ты реши всё». No questions; decide, log, continue.
 
 ## Next actions (in order)
-1. Post in Hack-Nation Discord `#api-credits` (channel 1543474803992825876) as Rusty | SuperDuperAi, English, 2 sentences:
+1. [posted 17:58 PT] Post in Hack-Nation Discord `#api-credits` (channel 1543474803992825876) as Rusty | SuperDuperAi, English, 2 sentences:
    "ElevenLabs redemption bot says 'Invalid event or email address' for Hack-Nation with the same email I used on Luma and HackOS. Is the participant list synced yet, or should I wait?"
    Then retry Start Redemption in the ElevenLabs Discord (server 1066739690436313158, #coupon-codes) with rust.starman@gmail.com every ~hour.
    If a code arrives (bot DM): it needs an ElevenLabs account under rust.starman@gmail.com. Current account is info@superduperai.co.

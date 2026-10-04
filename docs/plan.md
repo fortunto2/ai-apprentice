@@ -54,12 +54,10 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - Videos: demo/video/01-team-introduction.mp4 (29 s), 02-product-demo.mp4 (39 s), 03-technical-walkthrough.mp4 (43 s). Narration: ElevenLabs TTS.
 - Eval `pnpm eval`: 23/23 (text-only, real agent). Demo session with frames in app/public/demo-session.json.
 - BYOK: "Keys" button on /capture and /teach; agent auto-created in the visitor's ElevenLabs account.
-- ElevenLabs quota on info@superduperai.co is exhausted (9,976/10,000 chars, resets ~3 Nov). Voice on the live URL
-  needs a visitor key, or the second account: sign-up form for rust.starman@gmail.com is filled in the ElevenLabs tab,
-  blocked on hCaptcha (Rustam must click Sign up + solve + confirm email), then: new API key → `pnpm agent:create` →
-  `bash scripts/deploy.sh`.
+- ElevenLabs: 01:05 PT switched to a fresh account (rust.starman@gmail.com, 10k credits), new agent
+  agent_9401m42yffcpewm8hqc323x6nenk, deployed. Old account quota gone until ~3 Nov.
 - Gemini: free-tier 3.5-flash exhausted on both keys; default is now gemini-2.5-flash with key/model rotation.
 - Discord: no reply to the credits posts (#api-credits Hack-Nation, #general-chat ElevenLabs).
 
 ## Blocked on Rustam
-- hCaptcha on ElevenLabs sign-up (above). Optional: real voice run once credits exist.
+- Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

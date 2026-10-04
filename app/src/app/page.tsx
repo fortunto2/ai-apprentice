@@ -22,7 +22,7 @@ export default function Home() {
           ))}
         </div>
         <p className="mt-10 text-xs text-zinc-500">
-          Sandbox ERP with invented data: <Link className="underline" href="/erp">/erp</Link>. Share the Capture tab itself when asked which screen to share.
+          Sandbox ERP with invented data: <Link className="underline" href="/erp">/erp</Link>. How it works: <Link className="underline" href="/architecture">/architecture</Link>. Share the Capture tab itself when asked which screen to share.
         </p>
       </div>
     </main>

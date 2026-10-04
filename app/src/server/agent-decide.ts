@@ -4,7 +4,7 @@
 // Reasoning cascade: read the invoice → which guardrails apply → is every decision covered by a
 // rule the expert stated → act, or stop and ask a human.
 
-import { Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { SYNTH_MODEL, generateStructured } from "./llm";
 import type { Invoice } from "@/lib/erp-data";
 import { WorkMap } from "@/lib/schemas";
@@ -32,13 +32,14 @@ const SYSTEM = `You are an accounts-payable agent that learned the job ONLY from
 Rules:
 - You may act only where the Work Map gives you a rule or a precedent. Quote the expert's words as the reason.
 - Equipment/capex rules need an asset number; use one only if it is literally present in the invoice text. If a rule says "ask the controller" or no rule covers the case (unknown supplier, unusual amount, unseen situation), set action=stop_and_ask, finalAction=none, and say what you would ask and whom.
-- Suppliers never mentioned in the Work Map are unknown: stop and ask, unless a guardrail explicitly says what to do with unknown suppliers.
+- A supplier is known if it appears anywhere in the Work Map (steps, screen captions, guardrails) or the invoice history shows earlier invoices from it. A supplier that is neither is unknown: stop and ask, unless a guardrail explicitly says what to do with unknown suppliers.
 - Routine invoices match the expert's plain "approve and save" step and may be saved: a supplier with history ("supplier since …", previous invoices), amount under the capex limit, pre-coded to an opex cost center, nothing in the guardrails about them. The expert did not comment on those because there was nothing to decide.
 - Keep changes minimal; null means keep the current value.`;
 
 export function decideInvoice(input: { workMap: WorkMap; invoice: Invoice; apiKey?: string }) {
   const m = input.workMap;
-  const steps = m.steps.map((s) => `${s.n}. ${s.title}: ${s.decision}${s.reason.quote ? ` ("${s.reason.quote}")` : ""}`).join("\n");
+  // The screen caption carries the supplier and amount of the precedent; without it every supplier looks unknown.
+  const steps = m.steps.map((s) => `${s.n}. ${s.title} [screen: ${s.screenMoment.caption}]: ${s.decision}${s.reason.quote ? ` ("${s.reason.quote}")` : ""}`).join("\n");
   const guards = m.guardrails.map((g) => `${g.id} [${g.kind}] ${g.rule}${g.quote ? ` ("${g.quote}")` : ""}${g.check ? ` check=${JSON.stringify(g.check)}` : ""}`).join("\n");
   const inv = input.invoice;
   const invoiceText = `${inv.id} · ${inv.supplier} (${inv.country}) · €${inv.amount} · ${inv.description}\nLines: ${inv.lines.map((l) => `${l.text} €${l.amount}`).join("; ")}\nCurrent coding: cost center ${inv.costCenter}, asset number "${inv.assetNumber}", approval ${inv.approval}, status ${inv.status}\nHistory: ${inv.history.join(" · ")}\nDate ${inv.date}`;
@@ -51,5 +52,15 @@ export function decideInvoice(input: { workMap: WorkMap; invoice: Invoice; apiKe
     temperature: 0.1,
     timeoutMs: 40_000,
     apiKey: input.apiKey,
-  });
+  }).pipe(
+    // The UI shows `reason` as the expert's quote. Keep it only when it really is one.
+    Effect.map((d) => (isQuoteFrom(m, d.reason) ? d : { ...d, reason: "" })),
+  );
+}
+
+function isQuoteFrom(m: WorkMap, text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length < 8) return false;
+  const pool = [...m.steps.map((s) => s.reason.quote), ...m.guardrails.flatMap((g) => [g.quote, g.rule]), m.summary].filter(Boolean).map((q) => q!.toLowerCase());
+  return pool.some((q) => q.includes(t) || t.includes(q));
 }

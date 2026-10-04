@@ -222,6 +222,26 @@ function TeachPage() {
         {error && <div className="mx-4 mt-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>}
 
         <section className="border-b border-white/10 px-4 py-2">
+          <div className="text-[11px] uppercase tracking-wide text-zinc-500">Expert&apos;s steps · click ▶ to replay her screen moment</div>
+          <ul className="mt-1 space-y-0.5 text-[11px] text-zinc-400">
+            {map.steps.map((s) => (
+              <li key={s.n} className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    setReplay(s);
+                    setTimeout(() => setReplay(null), 15_000);
+                  }}
+                  className="rounded bg-violet-500/20 px-1 text-[10px] text-violet-200 hover:bg-violet-500/40"
+                  title={`Replay ${fmtT(s.screenMoment.t)}`}
+                >
+                  ▶ {s.n}
+                </button>
+                <span className="truncate">{s.title}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="border-b border-white/10 px-4 py-2">
           <div className="text-[11px] uppercase tracking-wide text-zinc-500">Guardrails in force (from the Work Map)</div>
           <ul className="mt-1 space-y-0.5 text-[11px] text-zinc-400">
             {map.guardrails.map((g) => (

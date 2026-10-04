@@ -62,5 +62,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 02:10 PT: /simplify pass applied (shared protocol module, useLatest, frame diff before encode, single retry);
   screen recording + video replay of moments in Map/Teach; demo recording webm for the fallback session.
 
+- 02:40 PT: /agent page (agent works the routine queue from the Work Map, stops on the unknown supplier, controller release);
+  SGR decision cascade in src/server/agent-decide.ts; Gemini 503 rotates like 429.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

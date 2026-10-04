@@ -111,7 +111,7 @@ The eval also writes `public/demo-session.json` (real frames, events, transcript
 ## Stack
 
 Next.js 16 · ElevenLabs Agents (`@elevenlabs/react`, `eleven_v3_conversational`, Expressive Mode, patient turn-taking,
-client tools, per-session prompt overrides) · Gemini 2.5 Flash for vision and synthesis · **Effect 4** for the server
+client tools, per-session prompt overrides) · Gemini (2.5 Flash-Lite with thinking off for vision, 3.8 Flash for synthesis; rotates over five models and two keys when a free-tier bucket is empty) · **Effect 4** for the server
 pipeline (typed errors, retry, timeout, key rotation) · Effect Schema for the SGR schemas · IndexedDB for the session.
 
 ## Run it

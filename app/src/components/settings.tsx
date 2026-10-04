@@ -3,13 +3,12 @@
 // Bring-your-own-key panel. A judge with their own ElevenLabs / Gemini credits can run the whole
 // demo without touching our quota.
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { loadKeys, saveKeys, type Keys } from "@/lib/byok";
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
-  const [keys, setKeys] = useState<Keys>({});
-  useEffect(() => setKeys(loadKeys()), []);
+  const [keys, setKeys] = useState<Keys>(() => (typeof window === "undefined" ? {} : loadKeys()));
   const own = Boolean(keys.elevenlabs || keys.gemini);
 
   return (

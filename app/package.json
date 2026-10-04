@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "agent:create": "node --experimental-strip-types --env-file=.env.local scripts/create-agent.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eval": "node --experimental-strip-types --env-file=.env.local scripts/eval.ts"
   },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.70.0",

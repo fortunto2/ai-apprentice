@@ -65,5 +65,7 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 02:40 PT: /agent page (agent works the routine queue from the Work Map, stops on the unknown supplier, controller release);
   SGR decision cascade in src/server/agent-decide.ts; Gemini 503 rotates like 429.
 
+- 01:30 PT: eval re-run after refactor: 23/23. Product demo video v3 uploaded to HackOS (Revision 6, eligible).
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

@@ -48,17 +48,18 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL (https://ai-apprentice-nu.vercel.app). Notes: docs/pitch.md
 - [ ] HackOS (team 'SuperDuper' exists, 1 member) + Google Form submit by 05:45
 
-## Mandate (Sat 17:50 PT): Rustam left, said «ты реши всё». No questions; decide, log, continue.
-
-## Next actions (in order)
-1. [posted 17:58 PT] Post in Hack-Nation Discord `#api-credits` (channel 1543474803992825876) as Rusty | SuperDuperAi, English, 2 sentences:
-   "ElevenLabs redemption bot says 'Invalid event or email address' for Hack-Nation with the same email I used on Luma and HackOS. Is the participant list synced yet, or should I wait?"
-   Then retry Start Redemption in the ElevenLabs Discord (server 1066739690436313158, #coupon-codes) with rust.starman@gmail.com every ~hour.
-   If a code arrives (bot DM): it needs an ElevenLabs account under rust.starman@gmail.com. Current account is info@superduperai.co.
-2. Keep monitoring `#challenge-01-elevenlabs`, `#stanford`, DMs for teammate replies / organiser notices.
-3. Build a demo session with real frames (Playwright or CDP screenshots of /erp states → /api/vision → session JSON) so Map/Teach fallback shows thumbnails.
-4. Voice e2e still needs Rustam's mic. When he is back: docs/demo-script.md.
-5. Submission (HackOS team 'SuperDuper' + Google Form) needs 3 videos ≤60 s, team photo. Rustam records; prepare cut lists (docs/pitch.md).
+## Status Sun 4 Oct 03:10 PT — SUBMITTED
+- HackOS: project "AI Apprentice", challenge 01, submitted 02:35 PT (eligible, 3/3 videos, photo). Edits open until 06:15.
+- Google Form: submitted 02:50 PT ("Your response has been recorded"), responder info@life2film.com, team emails rust.starman + azaika2019.
+- Videos: demo/video/01-team-introduction.mp4 (29 s), 02-product-demo.mp4 (39 s), 03-technical-walkthrough.mp4 (43 s). Narration: ElevenLabs TTS.
+- Eval `pnpm eval`: 23/23 (text-only, real agent). Demo session with frames in app/public/demo-session.json.
+- BYOK: "Keys" button on /capture and /teach; agent auto-created in the visitor's ElevenLabs account.
+- ElevenLabs quota on info@superduperai.co is exhausted (9,976/10,000 chars, resets ~3 Nov). Voice on the live URL
+  needs a visitor key, or the second account: sign-up form for rust.starman@gmail.com is filled in the ElevenLabs tab,
+  blocked on hCaptcha (Rustam must click Sign up + solve + confirm email), then: new API key → `pnpm agent:create` →
+  `bash scripts/deploy.sh`.
+- Gemini: free-tier 3.5-flash exhausted on both keys; default is now gemini-2.5-flash with key/model rotation.
+- Discord: no reply to the credits posts (#api-credits Hack-Nation, #general-chat ElevenLabs).
 
 ## Blocked on Rustam
-- Voice end-to-end test and the three videos.
+- hCaptcha on ElevenLabs sign-up (above). Optional: real voice run once credits exist.

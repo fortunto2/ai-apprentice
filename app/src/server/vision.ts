@@ -20,5 +20,5 @@ export function describeFrameChange(input: { prev: string | null; curr: string; 
   else parts.push({ text: "No previous frame: describe what is open now as one 'open' or 'navigate' event." });
   parts.push({ text: "CURRENT frame:" }, dataUrlToInline(input.curr));
   parts.push({ text: `RECENT EVENTS:\n${input.recent.slice(-8).join("\n") || "(none)"}` });
-  return generateStructured({ stage: "vision", model: VISION_MODEL, schema: VisionResult, system: SYSTEM, parts, timeoutMs: 20_000, apiKey: input.apiKey });
+  return generateStructured({ stage: "vision", model: VISION_MODEL, schema: VisionResult, system: SYSTEM, parts, timeoutMs: 20_000, apiKey: input.apiKey, thinkingBudget: 0 });
 }

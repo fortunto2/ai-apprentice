@@ -4,8 +4,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { Data, Duration, Effect, Schedule, Schema } from "effect";
 
-export const VISION_MODEL = process.env.VISION_MODEL ?? "gemini-2.5-flash";
-export const SYNTH_MODEL = process.env.SYNTH_MODEL ?? "gemini-2.5-flash";
+// Vision runs every 1.5 s: the lite model with thinking off answers in ~1.5 s; the synthesis models keep thinking.
+export const VISION_MODEL = process.env.VISION_MODEL ?? "gemini-2.5-flash-lite";
+export const SYNTH_MODEL = process.env.SYNTH_MODEL ?? "gemini-3.8-flash";
 
 export class LlmError extends Data.TaggedError("LlmError")<{ readonly stage: string; readonly cause: unknown }> {}
 export class DecodeError extends Data.TaggedError("DecodeError")<{ readonly stage: string; readonly raw: string; readonly cause: unknown }> {}
@@ -18,7 +19,7 @@ function keys(override?: string): string[] {
   if (!k.length) throw new Error("GEMINI_API_KEY missing");
   return [...new Set(k)];
 }
-const MODEL_FALLBACKS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+const MODEL_FALLBACKS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3.8-flash"];
 // Quota (429) and overload (503) both mean "try the next key or model", not "give up".
 const isQuota = (e: unknown) => {
   const st = (e as { status?: number } | null)?.status;
@@ -76,6 +77,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
   temperature?: number;
   timeoutMs?: number;
   apiKey?: string;
+  thinkingBudget?: number; // 0 disables thinking (fast, cheap); undefined keeps the model default
 }): Effect.Effect<S["Type"], LlmError | DecodeError> {
   const { jsonSchema, decode } = compile(opts.schema);
   const call = Effect.tryPromise({
@@ -87,6 +89,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
           responseMimeType: "application/json",
           responseJsonSchema: jsonSchema,
           temperature: opts.temperature ?? 0.2,
+          ...(opts.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: opts.thinkingBudget } } : {}),
         },
       }, opts.apiKey),
     catch: (cause) => new LlmError({ stage: opts.stage, cause }),

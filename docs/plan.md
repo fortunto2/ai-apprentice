@@ -48,6 +48,17 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL (https://ai-apprentice-nu.vercel.app). Notes: docs/pitch.md
 - [ ] HackOS (team 'SuperDuper' exists, 1 member) + Google Form submit by 05:45
 
+## Mandate (Sat 17:50 PT): Rustam left, said «ты реши всё». No questions; decide, log, continue.
+
+## Next actions (in order)
+1. Post in Hack-Nation Discord `#api-credits` (channel 1543474803992825876) as Rusty | SuperDuperAi, English, 2 sentences:
+   "ElevenLabs redemption bot says 'Invalid event or email address' for Hack-Nation with the same email I used on Luma and HackOS. Is the participant list synced yet, or should I wait?"
+   Then retry Start Redemption in the ElevenLabs Discord (server 1066739690436313158, #coupon-codes) with rust.starman@gmail.com every ~hour.
+   If a code arrives (bot DM): it needs an ElevenLabs account under rust.starman@gmail.com. Current account is info@superduperai.co.
+2. Keep monitoring `#challenge-01-elevenlabs`, `#stanford`, DMs for teammate replies / organiser notices.
+3. Build a demo session with real frames (Playwright or CDP screenshots of /erp states → /api/vision → session JSON) so Map/Teach fallback shows thumbnails.
+4. Voice e2e still needs Rustam's mic. When he is back: docs/demo-script.md.
+5. Submission (HackOS team 'SuperDuper' + Google Form) needs 3 videos ≤60 s, team photo. Rustam records; prepare cut lists (docs/pitch.md).
+
 ## Blocked on Rustam
-- End-to-end voice test (mic + tab share), see docs/demo-script.md. Agent id agent_4101m4211fv1eqq8k2nzkce7h4zz, signed in as info@superduperai.co (not rust.starman): the Creator code needs the Luma email, so credits may need a second account or a workspace invite.
-- HackOS: create team, declare challenge 01 in Discord (others did it in `#challenge-01-elevenlabs`).
+- Voice end-to-end test and the three videos.

@@ -5,10 +5,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { DEMO_WORKMAP } from "@/lib/demo-workmap";
+import { loadDemoSession } from "@/lib/demo-workmap";
+import { NoWorkMap } from "@/components/panel";
+import { MomentPlayer } from "@/components/moment-player";
 import { describeCond, exportAgentGuardrails } from "@/lib/guardrails";
 import type { WorkMap, WorkMapStep } from "@/lib/schemas";
-import { fmtT, loadSession, saveSession, type Session } from "@/lib/session-store";
+import { fmtT, loadSession, type Session } from "@/lib/session-store";
 
 function download(name: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -30,31 +32,8 @@ export default function MapPage() {
   const frames = useMemo(() => new Map((session?.frames ?? []).map((f) => [f.id, f])), [session]);
   const step: WorkMapStep | undefined = map?.steps.find((s) => s.n === sel) ?? map?.steps[0];
 
-  async function useDemo() {
-    // Prefer the session produced by the eval run (real frames + events); fall back to the static map.
-    let s: Session = { id: "demo", startedAt: Date.now(), events: [], frames: [], transcript: [], workMap: DEMO_WORKMAP };
-    try {
-      const r = await fetch("/demo-session.json", { cache: "no-store" });
-      if (r.ok) s = (await r.json()) as Session;
-    } catch {
-      /* static fallback */
-    }
-    await saveSession(s);
-    setSession(s);
-  }
-
   if (session === undefined) return <div className="p-10 text-zinc-400">Loading…</div>;
-  if (!map)
-    return (
-      <div className="mx-auto max-w-xl p-10 text-zinc-200">
-        <h1 className="text-xl font-semibold">No Work Map yet</h1>
-        <p className="mt-2 text-zinc-400">Run a capture session first, or load the demo Work Map produced from a scripted session.</p>
-        <div className="mt-4 flex gap-2">
-          <Link href="/capture" className="rounded bg-emerald-500 px-3 py-1.5 text-sm font-medium text-black">Go to Capture</Link>
-          <button onClick={useDemo} className="rounded border border-white/15 px-3 py-1.5 text-sm">Load demo Work Map</button>
-        </div>
-      </div>
-    );
+  if (!map) return <NoWorkMap title="No Work Map yet" onDemo={() => loadDemoSession().then(setSession)} />;
 
   const guard = (id: string) => map.guardrails.find((g) => g.id === id);
   const judgment = map.steps.filter((s) => s.isJudgmentCall).length;
@@ -119,11 +98,12 @@ export default function MapPage() {
             <h2 className="text-xl font-semibold">{step.title}</h2>
             <div className="mt-4 grid grid-cols-[1fr_1fr] gap-6">
               <div>
-                {(() => {
-                  const f = step.screenMoment.frameId ? frames.get(step.screenMoment.frameId) : undefined;
-                  // eslint-disable-next-line @next/next/no-img-element
-                  return f ? <img src={f.dataUrl} alt="" className="w-full rounded-lg ring-1 ring-white/10" /> : <div className="flex h-56 items-center justify-center rounded-lg bg-white/5 text-xs text-zinc-500">Screen moment not stored in this session</div>;
-                })()}
+                <MomentPlayer
+                  recording={session?.recording}
+                  t={step.screenMoment.t}
+                  fallbackUrl={step.screenMoment.frameId ? frames.get(step.screenMoment.frameId)?.dataUrl : undefined}
+                  className="h-56 w-full rounded-lg object-contain ring-1 ring-white/10"
+                />
                 <div className="mt-2 text-xs text-zinc-400">
                   <span className="font-mono">{fmtT(step.screenMoment.t)}</span> · {step.screenMoment.caption}
                 </div>

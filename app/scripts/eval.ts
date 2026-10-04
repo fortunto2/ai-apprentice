@@ -7,14 +7,15 @@
 // Needs the dev server on EVAL_BASE (default http://localhost:3000) and GEMINI_API_KEY in .env.local.
 
 import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
-import { TextConversation, personaAnswer, fmt, type Turn } from "./eval-lib.ts";
+import { TextConversation, personaAnswer, fmt } from "./eval-lib.ts";
 import { interviewerPrompt, debriefPrompt, tutorPrompt } from "../src/lib/prompts.ts";
 import { violations, describeCond } from "../src/lib/guardrails.ts";
+import { DEFAULT_GAP, LANGS, TUTOR_GREETING, guardrailMsg, langOf, offTheRecordResult, openedMsg, pauseMsg, predictMsg, replayResult, saveOkMsg, screenNote, stepForGuardrail } from "../src/lib/protocol.ts";
 import type { WorkMap, ScreenEvent, TranscriptLine } from "../src/lib/schemas.ts";
 
 const BASE = process.env.EVAL_BASE ?? "http://localhost:3000";
 const GEMINI = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? "";
-const GEMINI2 = process.env.GOOGLE_API_KEY ?? "";
+const GEMINI2 = process.env.GEMINI_API_KEY ? process.env.GOOGLE_API_KEY ?? "" : "";
 const args = process.argv.slice(2);
 const only = args.includes("--case") ? args[args.indexOf("--case") + 1] : null;
 const writeDemo = args.includes("--write-demo");
@@ -49,11 +50,11 @@ async function runCapture(c: Case) {
   const conv = await TextConversation.open({
     base: BASE,
     prompt: interviewerPrompt(c.language),
-    firstMessage: "Hi, I'm your apprentice today. I'll watch and stay quiet while you work.",
+    firstMessage: LANGS[langOf(c.language)].greeting,
     language: c.language,
     onTool: (name) => {
       tools.push(name);
-      if (name === "off_the_record") return "Removed 2 screen events and the last minute of the expert's words from the record.";
+      if (name === "off_the_record") return offTheRecordResult(2);
     },
   });
   await conv.settle(1500, 6000);
@@ -61,9 +62,8 @@ async function runCapture(c: Case) {
   const transcript: TranscriptLine[] = [];
   let questions = 0;
   let guardrailQ = false;
-  let silentPauses = 0;
   const unasked: ScreenEvent[] = [];
-  const langName = c.language === "ru" ? "Russian" : c.language === "de" ? "German" : "English";
+  const langName = LANGS[langOf(c.language)].name;
 
   const answer = async (q: string, t: number) => {
     const a = GEMINI ? await personaAnswer({ apiKey: GEMINI, fallbackKey: GEMINI2, persona: c.expert.persona, language: langName, history: conv.log, question: q }) : "It depends.";
@@ -78,15 +78,13 @@ async function runCapture(c: Case) {
       const ev: ScreenEvent = { ...step.event, t: step.t, source: step.event.id.startsWith("v") ? "vision" : "dom" };
       events.push(ev);
       unasked.push(ev);
-      conv.context(`[SCREEN] ${fmt(ev.t)} ${ev.summary}`);
+      conv.context(screenNote(ev));
       await new Promise((r) => setTimeout(r, 300));
     } else if (step.pause) {
-      const recent = unasked.splice(0).map((e) => `- ${fmt(e.t)} ${e.summary}`).join("\n");
-      conv.say(`[PAUSE] The expert has been idle for 4 s. Recent screen events:\n${recent || "(nothing new)"}\nAsk ONE short question about a reason or a guardrail behind these, or call skip_turn.`);
+      conv.say(pauseMsg(4000, unasked.splice(0)));
       const out = await conv.settle(2500, 15_000);
       const q = out.find((o) => o.who === "agent");
       if (!q) {
-        silentPauses++;
         console.log(`    ${fmt(step.t)} pause → silence`);
         continue;
       }
@@ -162,7 +160,7 @@ async function runDebrief(c: Case, map: WorkMap) {
   const conv = await TextConversation.open({
     base: BASE,
     prompt: debriefPrompt(map, c.language),
-    firstMessage: `Thanks, the task is done. Let me close a few gaps before I explain it back. First: ${map.openGaps[0] ?? "which of these steps would a new hire most likely get wrong?"}`,
+    firstMessage: LANGS[langOf(c.language)].debriefOpener(map.openGaps[0] ?? DEFAULT_GAP),
     language: c.language,
     onTool: (name, p) => {
       if (name === "confirm_teachback") confirmed = p as { confirmed: boolean; corrections?: string };
@@ -170,7 +168,7 @@ async function runDebrief(c: Case, map: WorkMap) {
   });
   await conv.settle(1500, 6000);
   const transcript: TranscriptLine[] = [];
-  const langName = c.language === "ru" ? "Russian" : c.language === "de" ? "German" : "English";
+  const langName = LANGS[langOf(c.language)].name;
   let t = 0;
   let questions = 0;
   let teachBackSeen = false;
@@ -206,21 +204,18 @@ async function runTeach(c: Case, map: WorkMap) {
   const conv = await TextConversation.open({
     base: BASE,
     prompt: tutorPrompt(map, "two open invoices in the AP workbench, December close"),
-    firstMessage: "Hi, I'm your tutor today. Open the first invoice whenever you're ready.",
+    firstMessage: TUTOR_GREETING,
     language: "en",
     onTool: (name, p) => {
       tools.push({ name, p });
-      if (name === "replay_moment") {
-        const s = map.steps.find((x) => x.n === Number(p.step));
-        return s ? `Showing the expert's screen moment for step ${s.n}: ${s.screenMoment.caption}. Expert said: "${s.reason.quote}"` : "no such step";
-      }
+      if (name === "replay_moment") return replayResult(map.steps.find((x) => x.n === Number(p.step)));
     },
   });
   await conv.settle(1500, 6000);
   const st = c.newHire.wrongState as Parameters<typeof violations>[1];
-  conv.say(`[SCREEN] ${c.newHire.case} opened. Orient the new hire in one sentence (what this case is, what to look at), do not reveal the decision.`);
+  conv.say(openedMsg(`${c.newHire.case} opened`));
   await conv.settle(2500, 12_000);
-  conv.say(`[PREDICT] The new hire has been looking at ${st.invoice} (${st.supplier}, €${st.amount}, cost center ${st.cost_center}, approval ${st.approval}) for a few seconds without changing anything. Ask them to predict what the expert would do with this one and why. One question.`);
+  conv.say(predictMsg(st.invoice, st));
   await conv.settle(2500, 12_000);
   conv.say(c.newHire.prediction);
   await conv.settle(2500, 12_000);
@@ -228,11 +223,7 @@ async function runTeach(c: Case, map: WorkMap) {
   const v = violations(map.guardrails, st, true);
   check("teach: guardrail checker flags the wrong decision", v.length > 0, v.map((x) => x.guardrail.id).join(","));
   if (v.length) {
-    const g = v[0].guardrail;
-    const stepN = g.stepN ?? map.steps.find((s) => s.guardrailIds.includes(g.id))?.n ?? 1;
-    conv.say(
-      `[GUARDRAIL] The new hire is about to SAVE ${st.invoice} (${st.supplier}, €${st.amount}) with cost center ${st.cost_center}, asset ${st.asset_number || "none"}, approval ${st.approval}, status ${st.status}. This breaks guardrail ${g.id}: ${g.rule} (expected ${describeCond(v[0].expected)}). The expert's words: "${g.quote ?? ""}". Step in now: say the expert would stop here and ask why they think so, then call replay_moment with step ${stepN}, explain the rule in the expert's words, and say what to change. The save is paused until they fix it.`,
-    );
+    conv.say(guardrailMsg(v[0], st, true, stepForGuardrail(map, v[0].guardrail.id)));
     await conv.settle(3000, 20_000);
   }
   conv.say(c.newHire.fix);
@@ -240,7 +231,7 @@ async function runTeach(c: Case, map: WorkMap) {
   const fixed = c.newHire.fixedState as Parameters<typeof violations>[1];
   const v2 = violations(map.guardrails, fixed, true);
   check("teach: checker passes the fixed decision", v2.length === 0, v2.map((x) => x.guardrail.id).join(","));
-  conv.say(`[SCREEN] The new hire is saving ${fixed.invoice} with cost center ${fixed.cost_center}, asset ${fixed.asset_number}, approval ${fixed.approval}, status ${fixed.status}. This satisfies all guardrails. Confirm in one sentence using the expert's reason, and call record_mastery for the matching step with result "mastered".`);
+  conv.say(saveOkMsg(fixed));
   await conv.settle(2500, 15_000);
   conv.close();
   const agentText = conv.log.filter((x) => x.who === "agent").map((x) => x.text).join("\n");

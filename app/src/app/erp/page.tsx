@@ -43,9 +43,17 @@ function ErpInner() {
 
   // Activity signals for the pause gate
   useEffect(() => {
-    const key = () => postToParent({ type: "erp:activity", kind: "key" });
-    const mouse = () => postToParent({ type: "erp:activity", kind: "mouse" });
-    const scroll = () => postToParent({ type: "erp:activity", kind: "scroll" });
+    // The parent samples activity every 500 ms; posting more often than that is wasted.
+    let lastPost = 0;
+    const act = (kind: "key" | "mouse" | "scroll") => () => {
+      const t = Date.now();
+      if (kind !== "key" && t - lastPost < 250) return;
+      lastPost = t;
+      postToParent({ type: "erp:activity", kind });
+    };
+    const key = act("key");
+    const mouse = act("mouse");
+    const scroll = act("scroll");
     window.addEventListener("keydown", key);
     window.addEventListener("mousemove", mouse);
     window.addEventListener("mousedown", mouse);

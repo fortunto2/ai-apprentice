@@ -13,6 +13,7 @@ export type Session = {
   transcript: TranscriptLine[];
   workMap?: WorkMap;
   mastery?: MasteryItem[];
+  recording?: Blob | null; // webm of the shared screen, same clock as events
 };
 
 const DB = "apprentice";

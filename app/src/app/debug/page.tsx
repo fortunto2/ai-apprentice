@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { DEMO_WORKMAP } from "@/lib/demo-workmap";
 import { INTERVIEWER_PROMPT, debriefPrompt, tutorPrompt } from "@/lib/prompts";
+import { LANGS, TUTOR_GREETING, replayResult } from "@/lib/protocol";
 
 type Line = { who: string; text: string };
 
@@ -43,8 +44,7 @@ function Debug() {
       confirm_teachback: async (p: unknown) => push({ who: "tool", text: `confirm_teachback ${JSON.stringify(p)}` }),
       replay_moment: async (p: { step: number }) => {
         push({ who: "tool", text: `replay_moment ${JSON.stringify(p)}` });
-        const s = DEMO_WORKMAP.steps.find((x) => x.n === Number(p.step));
-        return s ? `Showing the expert's screen moment for step ${s.n}: ${s.screenMoment.caption}. Expert said: "${s.reason.quote}"` : "no such step";
+        return replayResult(DEMO_WORKMAP.steps.find((x) => x.n === Number(p.step)));
       },
       record_mastery: async (p: unknown) => push({ who: "tool", text: `record_mastery ${JSON.stringify(p)}` }),
     },
@@ -61,7 +61,7 @@ function Debug() {
       const r = await fetch("/api/agent/token");
       const data = (await r.json()) as { signedUrl: string };
       const prompt = role === "interviewer" ? INTERVIEWER_PROMPT : role === "debrief" ? debriefPrompt({ ...DEMO_WORKMAP, openGaps: ["Is the €5,000 capex limit per invoice or per line item?", "Does the December hold apply to every supplier or only Schwarz?", "Who releases a held invoice, and when?"] }) : tutorPrompt(DEMO_WORKMAP, "two open invoices in the AP workbench");
-      const firstMessage = role === "interviewer" ? "Hi, I'm your apprentice today. I'll watch and stay quiet while you work." : role === "debrief" ? "Thanks, the task is done. Let me close a few gaps. First: is the five thousand euro capex limit per invoice or per line item?" : "Hi, I'm your tutor today. Open the first invoice whenever you're ready.";
+      const firstMessage = role === "interviewer" ? LANGS.en.greeting : role === "debrief" ? LANGS.en.debriefOpener("is the five thousand euro capex limit per invoice or per line item?") : TUTOR_GREETING;
       conv.startSession({ signedUrl: data.signedUrl, connectionType: "websocket", textOnly: true, overrides: { agent: { prompt: { prompt }, firstMessage, language: "en" }, conversation: { textOnly: true } } });
     };
   });

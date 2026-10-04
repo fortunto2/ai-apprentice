@@ -33,6 +33,8 @@ export async function loadDemoSession(): Promise<Session> {
   try {
     const r = await fetch("/demo-session.json");
     if (r.ok) s = (await r.json()) as Session;
+    const v = await fetch("/demo-recording.webm");
+    if (v.ok) s.recording = await v.blob();
   } catch {
     /* static fallback */
   }

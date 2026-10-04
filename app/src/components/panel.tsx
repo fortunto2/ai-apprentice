@@ -1,5 +1,7 @@
 "use client";
 
+import { memo, useMemo } from "react";
+import Link from "next/link";
 import type { Frame } from "@/lib/frame-capture";
 import type { ScreenEvent, TranscriptLine } from "@/lib/schemas";
 import { fmtT } from "@/lib/session-store";
@@ -17,8 +19,8 @@ export function ActivityPill({ activity, idleMs, connected }: { activity: Activi
   );
 }
 
-export function EventList({ events, frames, onPick }: { events: ScreenEvent[]; frames: Frame[]; onPick?: (e: ScreenEvent) => void }) {
-  const frameById = new Map(frames.map((f) => [f.id, f]));
+export const EventList = memo(function EventList({ events, frames, onPick }: { events: ScreenEvent[]; frames: Frame[]; onPick?: (e: ScreenEvent) => void }) {
+  const frameById = useMemo(() => new Map(frames.map((f) => [f.id, f])), [frames]);
   return (
     <ol className="flex flex-col gap-1.5">
       {events.map((e) => {
@@ -42,6 +44,19 @@ export function EventList({ events, frames, onPick }: { events: ScreenEvent[]; f
         );
       })}
     </ol>
+  );
+});
+
+export function NoWorkMap({ title, onDemo }: { title: string; onDemo: () => void }) {
+  return (
+    <div className="mx-auto max-w-xl p-10 text-zinc-200">
+      <h1 className="text-xl font-semibold">{title}</h1>
+      <p className="mt-2 text-zinc-400">Run a capture session first, or load the demo Work Map produced from a scripted session.</p>
+      <div className="mt-4 flex gap-2">
+        <Link href="/capture" className="rounded bg-emerald-500 px-3 py-1.5 text-sm font-medium text-black">Go to Capture</Link>
+        <button onClick={onDemo} className="rounded border border-white/15 px-3 py-1.5 text-sm">Load demo Work Map</button>
+      </div>
+    </div>
   );
 }
 

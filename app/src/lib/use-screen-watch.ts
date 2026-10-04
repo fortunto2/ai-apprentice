@@ -8,19 +8,20 @@ import { FrameCapture, type Frame } from "./frame-capture";
 import type { ErpMessage, ErpState } from "./erp-bridge";
 import type { ScreenEvent, VisionResult } from "./schemas";
 import { keyHeaders } from "./byok";
+import { useLatest } from "./use-latest";
 
 export type Activity = "typing" | "mouse" | "talking" | "agent" | "idle";
 
+const IDLE_AFTER_MS = 2500;
+
 export type ScreenWatch = {
-  active: boolean;
   events: ScreenEvent[];
   frames: Frame[];
   activity: Activity;
   idleMs: number;
   lastState: ErpState | null;
-  visionBusy: boolean;
   piiSeen: Set<string>;
-  start: () => Promise<void>;
+  start: () => Promise<MediaStream>;
   stop: () => void;
   markActivity: (a: Exclude<Activity, "idle">) => void;
   redactSince: (ms: number) => number;
@@ -33,13 +34,11 @@ export function useScreenWatch(opts: {
   onErp?: (msg: ErpMessage) => void;
   intervalMs?: number;
 }): ScreenWatch {
-  const [active, setActive] = useState(false);
   const [events, setEvents] = useState<ScreenEvent[]>([]);
   const [frames, setFrames] = useState<Frame[]>([]);
   const [activity, setActivity] = useState<Activity>("idle");
   const [idleMs, setIdleMs] = useState(0);
   const [lastState, setLastState] = useState<ErpState | null>(null);
-  const [visionBusy, setVisionBusy] = useState(false);
   const [piiSeen] = useState(() => new Set<string>());
 
   const capture = useRef<FrameCapture | null>(null);
@@ -48,33 +47,32 @@ export function useScreenWatch(opts: {
   const seq = useRef(0);
   const eventsRef = useRef<ScreenEvent[]>([]);
   const lastActivity = useRef<{ t: number; a: Exclude<Activity, "idle"> }>({ t: 0, a: "mouse" });
-  const onEventsRef = useRef(opts.onEvents);
-  const onErpRef = useRef(opts.onErp);
-  useEffect(() => {
-    onEventsRef.current = opts.onEvents;
-    onErpRef.current = opts.onErp;
-  });
+  const onEventsRef = useLatest(opts.onEvents);
+  const onErpRef = useLatest(opts.onErp);
 
   const now = () => Date.now() - opts.startedAtRef.current;
 
-  const pushEvents = useCallback((evs: ScreenEvent[]) => {
-    if (!evs.length) return;
-    eventsRef.current = [...eventsRef.current, ...evs];
-    setEvents(eventsRef.current);
-    onEventsRef.current?.(evs);
-  }, []);
+  const pushEvents = useCallback(
+    (evs: ScreenEvent[]) => {
+      if (!evs.length) return;
+      eventsRef.current = [...eventsRef.current, ...evs];
+      setEvents(eventsRef.current);
+      onEventsRef.current?.(evs);
+    },
+    [onEventsRef],
+  );
 
   const markActivity = useCallback((a: Exclude<Activity, "idle">) => {
     lastActivity.current = { t: Date.now(), a };
   }, []);
 
-  // Idle clock
+  // Idle clock. Whole seconds, so unchanged values do not re-render the page.
   useEffect(() => {
     const id = window.setInterval(() => {
       const dt = Date.now() - lastActivity.current.t;
-      setIdleMs(dt);
-      setActivity(dt > 2500 ? "idle" : lastActivity.current.a);
-    }, 250);
+      setIdleMs(Math.floor(dt / 1000) * 1000);
+      setActivity(dt > IDLE_AFTER_MS ? "idle" : lastActivity.current.a);
+    }, 500);
     return () => window.clearInterval(id);
   }, []);
 
@@ -116,7 +114,6 @@ export function useScreenWatch(opts: {
     async (frame: Frame) => {
       if (inflight.current) return;
       inflight.current = true;
-      setVisionBusy(true);
       const prev = lastSent.current;
       lastSent.current = frame;
       setFrames((f) => [...f.slice(-400), frame]);
@@ -155,47 +152,43 @@ export function useScreenWatch(opts: {
         console.warn("vision failed", e);
       } finally {
         inflight.current = false;
-        setVisionBusy(false);
       }
     },
     [piiSeen, pushEvents],
   );
 
+  // Returns the display stream so callers can also record it.
   const start = useCallback(async () => {
-    const fc = new FrameCapture({
-      startedAt: opts.startedAtRef.current,
-      intervalMs: opts.intervalMs ?? 1500,
-      onFrame: (frame, changed) => {
-        if (changed) void analyze(frame);
-      },
-    });
-    await fc.start();
+    const fc = new FrameCapture({ startedAt: opts.startedAtRef.current, intervalMs: opts.intervalMs ?? 1500, onFrame: (frame) => void analyze(frame) });
+    const stream = await fc.start();
     capture.current = fc;
-    setActive(true);
     markActivity("mouse");
+    return stream;
   }, [analyze, markActivity, opts.intervalMs, opts.startedAtRef]);
 
   const stop = useCallback(() => {
     capture.current?.stop();
     capture.current = null;
-    setActive(false);
   }, []);
 
   // Off the record: drop events in the last `ms`. Returns how many.
-  const redactSince = useCallback((ms: number) => {
-    const cutoff = now() - ms;
-    let n = 0;
-    eventsRef.current = eventsRef.current.map((e) => {
-      if (e.t >= cutoff && !e.redacted) {
-        n++;
-        return { ...e, redacted: true, summary: "[off the record]" };
-      }
-      return e;
-    });
-    setEvents(eventsRef.current);
-    return n;
+  const redactSince = useCallback(
+    (ms: number) => {
+      const cutoff = now() - ms;
+      let n = 0;
+      eventsRef.current = eventsRef.current.map((e) => {
+        if (e.t >= cutoff && !e.redacted) {
+          n++;
+          return { ...e, redacted: true, summary: "[off the record]" };
+        }
+        return e;
+      });
+      setEvents(eventsRef.current);
+      return n;
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    [],
+  );
 
   const reset = useCallback(() => {
     eventsRef.current = [];
@@ -205,5 +198,5 @@ export function useScreenWatch(opts: {
     seq.current = 0;
   }, []);
 
-  return { active, events, frames, activity, idleMs, lastState, visionBusy, piiSeen, start, stop, markActivity, redactSince, reset };
+  return { events, frames, activity, idleMs, lastState, piiSeen, start, stop, markActivity, redactSince, reset };
 }

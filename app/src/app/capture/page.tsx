@@ -8,59 +8,56 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { ActivityPill, EventList, Orb, Transcript } from "@/components/panel";
-import { LANG_NAMES, debriefPrompt, interviewerPrompt } from "@/lib/prompts";
+import { SettingsButton } from "@/components/settings";
+import { connectAgent } from "@/lib/agent-session";
+import { keyHeaders } from "@/lib/byok";
+import { debriefPrompt, interviewerPrompt } from "@/lib/prompts";
+import { DEFAULT_GAP, LANGS, langOf, offTheRecordResult, pauseMsg, screenNote, struckNote, type Lang } from "@/lib/protocol";
 import type { ScreenEvent, TranscriptLine, WorkMap } from "@/lib/schemas";
 import { fmtT, saveSession, type Session } from "@/lib/session-store";
+import { ScreenRecorder } from "@/lib/screen-recorder";
+import { useLatest } from "@/lib/use-latest";
 import { useScreenWatch } from "@/lib/use-screen-watch";
-import { keyHeaders, loadKeys, saveKeys } from "@/lib/byok";
-import { SettingsButton } from "@/components/settings";
 
 type Phase = "idle" | "capturing" | "synthesizing" | "debrief" | "finalizing" | "done";
+type WorkMapResult = { ok: true; workMap: WorkMap } | { ok: false; error: string };
 
 const MIN_GAP_MS = 40_000; // between questions
 const BUDGET_PER_10MIN = 5;
-const GREETING: Record<string, string> = {
-  en: "Hi, I'm your apprentice today. I'll watch and stay quiet while you work. Go ahead whenever you're ready.",
-  ru: "Привет, я сегодня ваш ученик. Буду смотреть и молчать, пока вы работаете. Начинайте, когда будете готовы.",
-  de: "Hallo, ich bin heute Ihr Lehrling. Ich schaue zu und bleibe still, während Sie arbeiten. Fangen Sie an, wann Sie möchten.",
-};
+
+async function postWorkMap(body: object): Promise<WorkMapResult> {
+  const res = await fetch("/api/workmap", { method: "POST", headers: { "content-type": "application/json", ...keyHeaders() }, body: JSON.stringify(body) });
+  return (await res.json()) as WorkMapResult;
+}
 
 function CapturePage() {
   const startedAt = useRef(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
-  const transcriptRef = useRef<TranscriptLine[]>([]);
   const [questions, setQuestions] = useState(0);
   const [mask, setMask] = useState(false);
-  const [lang, setLang] = useState<"en" | "ru" | "de">("en");
+  const [lang, setLang] = useState<Lang>("en");
   const [workMap, setWorkMap] = useState<WorkMap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<ScreenEvent | null>(null);
   const iframe = useRef<HTMLIFrameElement>(null);
   const lastAsk = useRef(0);
   const unaskedEvents = useRef<ScreenEvent[]>([]);
-  const phaseRef = useRef<Phase>("idle");
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
   const debriefStartT = useRef(0);
+  const recorder = useRef(new ScreenRecorder());
+  const recording = useRef<Blob | null>(null);
+  const phaseRef = useLatest(phase);
+  const transcriptRef = useLatest(transcript);
 
+  // eslint-disable-next-line react-hooks/purity -- only called from handlers and callbacks
   const now = () => Date.now() - startedAt.current;
-
-  const pushLine = useCallback((l: TranscriptLine) => {
-    transcriptRef.current = [...transcriptRef.current, l];
-    setTranscript(transcriptRef.current);
-  }, []);
+  const pushLine = useCallback((l: TranscriptLine) => setTranscript((t) => [...t, l]), []);
 
   const conv = useConversation({
     onMessage: ({ message, source }) => {
       if (!message?.trim()) return;
-      if (source === "ai") {
-        if (phaseRef.current === "capturing") setQuestions((q) => q + 1);
-        pushLine({ t: now(), role: "apprentice", text: message });
-      } else {
-        pushLine({ t: now(), role: "expert", text: message });
-      }
+      if (source === "ai" && phaseRef.current === "capturing") setQuestions((q) => q + 1);
+      pushLine({ t: now(), role: source === "ai" ? "apprentice" : "expert", text: message });
     },
     onVadScore: ({ vadScore }) => {
       if (vadScore > 0.6) watch.markActivity("talking");
@@ -70,13 +67,7 @@ function CapturePage() {
     },
     onError: (m) => setError(m),
     clientTools: {
-      off_the_record: async () => {
-        const n = watch.redactSince(60_000);
-        const cutoff = now() - 60_000;
-        transcriptRef.current = transcriptRef.current.map((l) => (l.t >= cutoff && l.role === "expert" ? { ...l, text: "", redacted: true } : l));
-        setTranscript(transcriptRef.current);
-        return `Removed ${n} screen events and the last minute of the expert's words from the record.`;
-      },
+      off_the_record: async () => offTheRecordResult(strikeLastMinute()),
       end_task: async () => {
         // Guard against premature calls: the expert must have just said they are done.
         const recent = transcriptRef.current.filter((l) => l.role === "expert").slice(-2).map((l) => l.text).join(" ");
@@ -88,103 +79,80 @@ function CapturePage() {
       },
     },
   });
+  const convRef = useLatest(conv);
 
   const watch = useScreenWatch({
     startedAtRef: startedAt,
     onEvents: (evs) => {
       if (phaseRef.current !== "capturing") return;
       unaskedEvents.current.push(...evs);
-      if (conv.status === "connected") {
-        for (const e of evs) conv.sendContextualUpdate(`[SCREEN] ${fmtT(e.t)} ${e.summary}`);
-      }
+      if (convRef.current.status === "connected") for (const e of evs) convRef.current.sendContextualUpdate(screenNote(e));
     },
   });
 
   // Pause gate: WHEN to ask. Idle long enough, agent not speaking, something new to ask about,
   // budget left, spacing respected. Reads live values through refs so the timer is created once.
-  const gate = useRef({ activity: watch.activity, idleMs: watch.idleMs, questions, status: conv.status, isSpeaking: conv.isSpeaking });
-  useEffect(() => {
-    gate.current = { activity: watch.activity, idleMs: watch.idleMs, questions, status: conv.status, isSpeaking: conv.isSpeaking };
-  });
-  const convRef = useRef(conv);
-  useEffect(() => {
-    convRef.current = conv;
-  });
+  const gate = useLatest({ activity: watch.activity, idleMs: watch.idleMs, questions });
   useEffect(() => {
     const id = window.setInterval(() => {
       const g = gate.current;
-      if (phaseRef.current !== "capturing" || g.status !== "connected") return;
-      if (g.activity !== "idle" || g.isSpeaking) return;
+      const c = convRef.current;
+      if (phaseRef.current !== "capturing" || c.status !== "connected") return;
+      if (g.activity !== "idle" || c.isSpeaking) return;
       const sinceAsk = Date.now() - lastAsk.current;
       const elapsedMin = Math.max(1, (Date.now() - startedAt.current) / 60_000);
       const budget = Math.ceil((BUDGET_PER_10MIN * elapsedMin) / 10) + 1;
       if (sinceAsk < MIN_GAP_MS || unaskedEvents.current.length === 0 || g.questions >= budget) return;
-      const recent = unaskedEvents.current.slice(-6).map((e) => `- ${fmtT(e.t)} ${e.summary}`).join("\n");
-      unaskedEvents.current = [];
+      const recent = unaskedEvents.current.splice(0).slice(-6);
       lastAsk.current = Date.now();
-      convRef.current.sendUserMessage(`[PAUSE] The expert has been idle for ${Math.round(g.idleMs / 1000)} s. Recent screen events:\n${recent}\nAsk ONE short question about a reason or a guardrail behind these, or call skip_turn.`);
+      c.sendUserMessage(pauseMsg(g.idleMs, recent));
     }, 500);
     return () => window.clearInterval(id);
-  }, []);
+  }, [gate, convRef, phaseRef]);
+
+  // "Off the record": strike the last minute of screen events and the expert's words.
+  function strikeLastMinute() {
+    const n = watch.redactSince(60_000);
+    const cutoff = now() - 60_000;
+    setTranscript((t) => t.map((l) => (l.t >= cutoff && l.role === "expert" ? { ...l, text: "", redacted: true } : l)));
+    return n;
+  }
+
+  async function connect(prompt: string, firstMessage: string) {
+    const err = await connectAgent(conv, { prompt, firstMessage, language: lang });
+    if (err) setError(err);
+    return !err;
+  }
 
   async function start() {
     setError(null);
     // eslint-disable-next-line react-hooks/purity -- event handler, not render
     startedAt.current = Date.now();
     watch.reset();
-    transcriptRef.current = [];
     setTranscript([]);
     setQuestions(0);
     try {
-      await watch.start();
+      const stream = await watch.start();
+      recording.current = null;
+      recorder.current.start(stream);
     } catch (e) {
       setError(`Screen share: ${String(e)}`);
       return;
     }
-    await connect(interviewerPrompt(lang), GREETING[lang]);
-    setPhase("capturing");
-  }
-
-  async function connect(prompt: string, firstMessage: string) {
-    for (let i = 0; i < 20 && conv.status !== "disconnected"; i++) await new Promise((r) => setTimeout(r, 250));
-    const r = await fetch("/api/agent/token", { headers: keyHeaders() });
-    const data = (await r.json()) as { signedUrl?: string; error?: string; agentId?: string; created?: boolean };
-    if (data.created && data.agentId) saveKeys({ ...loadKeys(), elevenlabsAgent: data.agentId });
-    if (!data.signedUrl) {
-      setError(data.error ?? "no signed url");
-      return;
-    }
-    await navigator.mediaDevices.getUserMedia({ audio: true });
-    conv.startSession({
-      signedUrl: data.signedUrl,
-      connectionType: "websocket",
-      overrides: { agent: { prompt: { prompt }, firstMessage, language: lang } },
-    });
+    if (await connect(interviewerPrompt(lang), LANGS[lang].greeting)) setPhase("capturing");
   }
 
   function snapshot(): Session {
-    return {
-      id: `s${startedAt.current.toString(36)}`,
-      startedAt: startedAt.current,
-      events: watch.events,
-      frames: watch.frames,
-      transcript: transcriptRef.current,
-      workMap: workMap ?? undefined,
-    };
+    return { id: `s${startedAt.current.toString(36)}`, startedAt: startedAt.current, events: watch.events, frames: watch.frames, transcript: transcriptRef.current, workMap: workMap ?? undefined, recording: recording.current };
   }
 
   async function endTask() {
     if (phaseRef.current !== "capturing") return;
     setPhase("synthesizing");
     watch.stop();
+    recording.current = await recorder.current.stop();
     conv.endSession();
-    const taskTranscript = transcriptRef.current;
-    const res = await fetch("/api/workmap", {
-      method: "POST",
-      headers: { "content-type": "application/json", ...keyHeaders() },
-      body: JSON.stringify({ events: watch.events, transcript: taskTranscript, expertName: "the expert" }),
-    });
-    const data = (await res.json()) as { ok: true; workMap: WorkMap } | { ok: false; error: string };
+    const data = await postWorkMap({ events: watch.events, transcript: transcriptRef.current, expertName: "the expert" });
     if (!data.ok) {
       setError(data.error);
       setPhase("capturing");
@@ -193,26 +161,24 @@ function CapturePage() {
     setWorkMap(data.workMap);
     await saveSession({ ...snapshot(), workMap: data.workMap });
     debriefStartT.current = now();
-    const gap0 = data.workMap.openGaps[0] ?? "which of these steps would a new hire most likely get wrong?";
-    await connect(debriefPrompt(data.workMap, lang), lang === "en" ? `Thanks, the task is done. Let me close a few gaps before I explain it back. First: ${gap0}` : lang === "ru" ? `Спасибо, задача закончена. Закрою несколько пробелов, прежде чем пересказать. Первый вопрос: ${gap0}` : `Danke, die Aufgabe ist erledigt. Ich schließe ein paar Lücken, bevor ich es zurückerkläre. Erste Frage: ${gap0}`);
-    setPhase("debrief");
+    if (await connect(debriefPrompt(data.workMap, lang), LANGS[lang].debriefOpener(data.workMap.openGaps[0] ?? DEFAULT_GAP))) setPhase("debrief");
   }
 
   async function finalize(confirmed: boolean, corrections: string) {
     if (!workMap) return;
     setPhase("finalizing");
     conv.endSession();
-    const debrief = transcriptRef.current.filter((l) => l.t >= debriefStartT.current);
-    const task = transcriptRef.current.filter((l) => l.t < debriefStartT.current);
-    const res = await fetch("/api/workmap", {
-      method: "POST",
-      headers: { "content-type": "application/json", ...keyHeaders() },
-      body: JSON.stringify({ events: watch.events, transcript: task, debrief, previous: workMap, expertName: "the expert" }),
+    const all = transcriptRef.current;
+    const data = await postWorkMap({
+      events: watch.events,
+      transcript: all.filter((l) => l.t < debriefStartT.current),
+      debrief: all.filter((l) => l.t >= debriefStartT.current),
+      previous: workMap,
+      expertName: "the expert",
     });
-    const data = (await res.json()) as { ok: true; workMap: WorkMap } | { ok: false; error: string };
-    const finalMap: WorkMap = data.ok ? data.workMap : workMap;
-    const withConfirm = { ...finalMap, confirmedByExpert: confirmed, corrections: corrections ? [corrections] : [] };
+    const withConfirm = { ...(data.ok ? data.workMap : workMap), confirmedByExpert: confirmed, corrections: corrections ? [corrections] : [] };
     setWorkMap(withConfirm);
+    // eslint-disable-next-line react-hooks/purity -- event handler, not render
     await saveSession({ ...snapshot(), workMap: withConfirm, endedAt: Date.now() });
     setPhase("done");
   }
@@ -224,6 +190,7 @@ function CapturePage() {
   }
 
   const connected = conv.status === "connected";
+  const pickedFrame = picked ? watch.frames.find((x) => x.id === picked.frameId) : undefined;
 
   return (
     <div className="grid h-screen grid-cols-[1fr_420px] bg-zinc-950 text-zinc-100">
@@ -258,11 +225,8 @@ function CapturePage() {
           {(phase === "capturing" || phase === "debrief") && (
             <button
               onClick={() => {
-                const n = watch.redactSince(60_000);
-                const cutoff = now() - 60_000;
-                transcriptRef.current = transcriptRef.current.map((l) => (l.t >= cutoff && l.role === "expert" ? { ...l, text: "", redacted: true } : l));
-                setTranscript(transcriptRef.current);
-                if (connected) conv.sendContextualUpdate(`[SYSTEM] The expert struck the last minute from the record (${n} events). Do not refer to it.`);
+                const n = strikeLastMinute();
+                if (connected) conv.sendContextualUpdate(struckNote(n));
               }}
               className="rounded-md border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5"
               title="Remove the last 60 s from the record"
@@ -271,10 +235,10 @@ function CapturePage() {
             </button>
           )}
           {phase === "idle" && (
-            <select value={lang} onChange={(e) => setLang(e.target.value as "en" | "ru" | "de")} className="rounded-md border border-white/15 bg-zinc-900 px-2 py-1.5 text-sm" title="Language the expert speaks; the Work Map and the tutor stay in English">
-              {Object.entries(LANG_NAMES).map(([k, v]) => (
+            <select value={lang} onChange={(e) => setLang(langOf(e.target.value))} className="rounded-md border border-white/15 bg-zinc-900 px-2 py-1.5 text-sm" title="Language the expert speaks; the Work Map and the tutor stay in English">
+              {Object.entries(LANGS).map(([k, v]) => (
                 <option key={k} value={k}>
-                  Expert speaks {v}
+                  Expert speaks {v.name}
                 </option>
               ))}
             </select>
@@ -312,11 +276,12 @@ function CapturePage() {
 
         {picked && (
           <div className="absolute bottom-4 right-[436px] w-[520px] rounded-lg border border-white/10 bg-zinc-900 p-2 shadow-2xl" onClick={() => setPicked(null)}>
-            {(() => {
-              const f = watch.frames.find((x) => x.id === picked.frameId);
+            {pickedFrame ? (
               // eslint-disable-next-line @next/next/no-img-element
-              return f ? <img src={f.dataUrl} alt="" className="w-full rounded" /> : <div className="p-4 text-xs text-zinc-500">No frame for this event</div>;
-            })()}
+              <img src={pickedFrame.dataUrl} alt="" className="w-full rounded" />
+            ) : (
+              <div className="p-4 text-xs text-zinc-500">No frame for this event</div>
+            )}
             <div className="px-1 pt-1 text-xs text-zinc-300">
               {fmtT(picked.t)} · {picked.summary}
             </div>

@@ -9,7 +9,6 @@ export type Turn = { who: "agent" | "user" | "ctx" | "tool" | "status"; text: st
 export class TextConversation {
   private ws!: WebSocket;
   readonly log: Turn[] = [];
-  private waiters: Array<(t: Turn | null) => void> = [];
   private t0 = Date.now();
 
   private onTool: ToolHandler;
@@ -44,7 +43,6 @@ export class TextConversation {
       ws.onerror = (e) => reject(new Error(`ws error ${String((e as ErrorEvent).message ?? e)}`));
       ws.onclose = (e) => {
         this.push({ who: "status", text: `closed ${e.code} ${e.reason}` });
-        this.waiters.splice(0).forEach((w) => w(null));
       };
       ws.onmessage = async (m) => {
         const ev = JSON.parse(String(m.data));
@@ -79,24 +77,7 @@ export class TextConversation {
   }
 
   private push(t: Omit<Turn, "t">) {
-    const turn = { ...t, t: Date.now() - this.t0 };
-    this.log.push(turn);
-    if (turn.who === "agent" || turn.who === "tool") this.waiters.splice(0).forEach((w) => w(turn));
-  }
-
-  /** Resolves with the next agent message or tool call, or null after `ms` of silence (skip_turn). */
-  waitTurn(ms = 12_000): Promise<Turn | null> {
-    return new Promise((res) => {
-      const timer = setTimeout(() => {
-        this.waiters = this.waiters.filter((w) => w !== done);
-        res(null);
-      }, ms);
-      const done = (t: Turn | null) => {
-        clearTimeout(timer);
-        res(t);
-      };
-      this.waiters.push(done);
-    });
+    this.log.push({ ...t, t: Date.now() - this.t0 });
   }
 
   /** Collect agent output until `quiet` ms pass without new agent text or tool calls. */
@@ -158,4 +139,4 @@ export async function personaAnswer(opts: { apiKey: string; model?: string; fall
   return (j.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "").trim() || "Hm, that depends.";
 }
 
-export const fmt = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
+export { fmtT as fmt } from "../src/lib/time.ts";

@@ -7,16 +7,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { ActivityPill, EventList, Orb, Transcript } from "@/components/panel";
-import { DEMO_WORKMAP } from "@/lib/demo-workmap";
+import { ActivityPill, EventList, NoWorkMap, Orb, Transcript } from "@/components/panel";
+import { SettingsButton } from "@/components/settings";
+import { MomentPlayer } from "@/components/moment-player";
+import { connectAgent } from "@/lib/agent-session";
+import { loadDemoSession } from "@/lib/demo-workmap";
 import type { ErpMessage, ErpState } from "@/lib/erp-bridge";
-import { describeCond, violations } from "@/lib/guardrails";
+import { violations, type Violation } from "@/lib/guardrails";
 import { tutorPrompt } from "@/lib/prompts";
+import { TUTOR_GREETING, guardrailMsg, matchesNote, openedMsg, predictMsg, replayResult, saveOkMsg, screenNote, stepForGuardrail, stillViolatesNote } from "@/lib/protocol";
 import type { MasteryItem, TranscriptLine, WorkMap, WorkMapStep } from "@/lib/schemas";
 import { fmtT, loadSession, saveSession, type Session } from "@/lib/session-store";
+import { useLatest } from "@/lib/use-latest";
 import { useScreenWatch } from "@/lib/use-screen-watch";
-import { keyHeaders, loadKeys, saveKeys } from "@/lib/byok";
-import { SettingsButton } from "@/components/settings";
 
 type Phase = "idle" | "teaching" | "done";
 
@@ -25,7 +28,6 @@ function TeachPage() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [phase, setPhase] = useState<Phase>("idle");
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
-  const transcriptRef = useRef<TranscriptLine[]>([]);
   const [mastery, setMastery] = useState<MasteryItem[]>([]);
   const [replay, setReplay] = useState<WorkMapStep | null>(null);
   const [caught, setCaught] = useState(0);
@@ -34,10 +36,7 @@ function TeachPage() {
   const flagged = useRef(new Set<string>()); // invoice+guardrail already stepped in on
   const predicted = useRef(new Set<string>()); // invoices we asked a prediction for
   const openedAt = useRef<{ invoice: string; t: number; changed: boolean } | null>(null);
-  const phaseRef = useRef<Phase>("idle");
-  useEffect(() => {
-    phaseRef.current = phase;
-  }, [phase]);
+  const phaseRef = useLatest(phase);
 
   useEffect(() => {
     loadSession().then(setSession);
@@ -45,11 +44,7 @@ function TeachPage() {
 
   const map: WorkMap | undefined = session?.workMap;
   const now = () => Date.now() - startedAt.current;
-
-  const pushLine = useCallback((l: TranscriptLine) => {
-    transcriptRef.current = [...transcriptRef.current, l];
-    setTranscript(transcriptRef.current);
-  }, []);
+  const pushLine = useCallback((l: TranscriptLine) => setTranscript((t) => [...t, l]), []);
 
   const conv = useConversation({
     onMessage: ({ message, source }) => {
@@ -66,10 +61,11 @@ function TeachPage() {
     clientTools: {
       replay_moment: async ({ step }: { step: number }) => {
         const s = map?.steps.find((x) => x.n === Number(step));
-        if (!s) return "No such step.";
-        setReplay(s);
-        setTimeout(() => setReplay(null), 15_000);
-        return `Showing the expert's screen moment for step ${s.n} (${fmtT(s.screenMoment.t)}: ${s.screenMoment.caption}). Expert said: "${s.reason.quote}"`;
+        if (s) {
+          setReplay(s);
+          setTimeout(() => setReplay(null), 15_000);
+        }
+        return replayResult(s);
       },
       record_mastery: async ({ step, result, note }: { step: number; result: string; note?: string }) => {
         setMastery((m) => [...m.filter((x) => x.stepN !== Number(step)), { stepN: Number(step), result: result === "mastered" ? "mastered" : "practice", note: note ?? "" }]);
@@ -79,20 +75,17 @@ function TeachPage() {
       },
     },
   });
+  const convRef = useLatest(conv);
 
-  function stepIn(gid: string, expected: { field: string; op: string; value?: string | null }, st: ErpState, atSave: boolean) {
-    const key = `${st.invoice}:${gid}`;
-    const g = map!.guardrails.find((x) => x.id === gid)!;
+  function stepIn(v: Violation, st: ErpState, atSave: boolean) {
+    const key = `${st.invoice}:${v.guardrail.id}`;
     if (flagged.current.has(key)) {
-      conv.sendContextualUpdate(`[SCREEN] ${st.invoice} still violates ${gid} (${describeCond(expected as never)}).`);
+      conv.sendContextualUpdate(stillViolatesNote(v, st));
       return;
     }
     flagged.current.add(key);
     setCaught((c) => c + 1);
-    const stepN = g.stepN ?? map!.steps.find((s) => s.guardrailIds.includes(gid))?.n ?? 1;
-    conv.sendUserMessage(
-      `[GUARDRAIL] ${atSave ? "The new hire is about to SAVE" : "The new hire just set"} ${st.invoice} (${st.supplier}, €${st.amount}) with cost center ${st.cost_center}, asset ${st.asset_number || "none"}, approval ${st.approval}, status ${st.status}. This breaks guardrail ${gid}: ${g.rule} (expected ${describeCond(expected as never)}). The expert's words: "${g.quote ?? ""}". Step in now: say the expert would stop here and ask why they think so, then call replay_moment with step ${stepN}, explain the rule in the expert's words, and say what to change. ${atSave ? "The save is paused until they fix it." : ""}`,
-    );
+    conv.sendUserMessage(guardrailMsg(v, st, atSave, stepForGuardrail(map!, v.guardrail.id)));
   }
 
   const onErp = useCallback(
@@ -100,30 +93,28 @@ function TeachPage() {
       if (phaseRef.current !== "teaching" || !map) return;
       if (m.type === "erp:event" && m.kind === "open") {
         openedAt.current = { invoice: m.invoice, t: Date.now(), changed: false };
-        conv.sendUserMessage(`[SCREEN] ${m.summary}. Orient the new hire in one sentence (what this case is, what to look at), do not reveal the decision.`);
+        conv.sendUserMessage(openedMsg(m.summary));
         return;
       }
       if (m.type === "erp:event" && m.kind === "change") {
         if (openedAt.current) openedAt.current.changed = true;
         const v = violations(map.guardrails, m.state, false);
-        if (v.length) stepIn(v[0].guardrail.id, v[0].expected, m.state, false);
-        else conv.sendContextualUpdate(`[SCREEN] ${m.summary}. This matches the expert's rules so far.`);
+        if (v.length) stepIn(v[0], m.state, false);
+        else conv.sendContextualUpdate(matchesNote(m.summary));
         return;
       }
       if (m.type === "erp:save-attempt") {
         const v = violations(map.guardrails, m.state, true);
         if (v.length) {
           iframe.current?.contentWindow?.postMessage({ type: "tutor:block-save", reason: `${v[0].guardrail.id}: ${v[0].guardrail.rule}` }, "*");
-          stepIn(v[0].guardrail.id, v[0].expected, m.state, true);
+          stepIn(v[0], m.state, true);
         } else {
           iframe.current?.contentWindow?.postMessage({ type: "tutor:allow-save" }, "*");
-          conv.sendUserMessage(`[SCREEN] The new hire is saving ${m.state.invoice} with cost center ${m.state.cost_center}, asset ${m.state.asset_number || "none"}, approval ${m.state.approval}, status ${m.state.status}. This satisfies all guardrails. Confirm in one sentence using the expert's reason, and call record_mastery for the matching step with result "mastered".`);
+          conv.sendUserMessage(saveOkMsg(m.state));
         }
         return;
       }
-      if (m.type === "erp:event" && (m.kind === "hold" || m.kind === "save")) {
-        conv.sendContextualUpdate(`[SCREEN] ${m.summary}`);
-      }
+      if (m.type === "erp:event" && (m.kind === "hold" || m.kind === "save")) conv.sendContextualUpdate(screenNote({ t: now(), summary: m.summary }));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [map, conv],
@@ -134,29 +125,30 @@ function TeachPage() {
     onErp,
     onEvents: (evs) => {
       if (phaseRef.current !== "teaching") return;
-      for (const e of evs) if (e.source === "vision") conv.sendContextualUpdate(`[SCREEN] ${fmtT(e.t)} ${e.summary}`);
+      for (const e of evs) if (e.source === "vision") convRef.current.sendContextualUpdate(screenNote(e));
     },
   });
 
   // Predict gate: the new hire opened a case and has been looking at it without changing anything.
+  // Live values via refs, so the timer is created once (useConversation returns a new object per render).
+  const gate = useLatest({ activity: watch.activity, lastState: watch.lastState });
   useEffect(() => {
     const id = window.setInterval(() => {
       const o = openedAt.current;
-      if (phaseRef.current !== "teaching" || !o || o.changed || conv.status !== "connected" || conv.isSpeaking) return;
-      if (predicted.current.has(o.invoice) || Date.now() - o.t < 9000 || watch.activity !== "idle") return;
+      const c = convRef.current;
+      if (phaseRef.current !== "teaching" || !o || o.changed || c.status !== "connected" || c.isSpeaking) return;
+      if (predicted.current.has(o.invoice) || Date.now() - o.t < 9000 || gate.current.activity !== "idle") return;
       predicted.current.add(o.invoice);
-      const st = watch.lastState;
-      conv.sendUserMessage(`[PREDICT] The new hire has been looking at ${o.invoice}${st ? ` (${st.supplier}, €${st.amount}, cost center ${st.cost_center}, approval ${st.approval})` : ""} for a few seconds without changing anything. Ask them to predict what the expert would do with this one and why. One question.`);
+      c.sendUserMessage(predictMsg(o.invoice, gate.current.lastState));
     }, 500);
     return () => window.clearInterval(id);
-  }, [conv, watch.activity, watch.lastState]);
+  }, [gate, convRef, phaseRef]);
 
   async function start() {
     if (!map) return;
     setError(null);
     startedAt.current = Date.now();
     watch.reset();
-    transcriptRef.current = [];
     setTranscript([]);
     setMastery([]);
     setCaught(0);
@@ -167,26 +159,9 @@ function TeachPage() {
     } catch {
       // No screen share: the tutor still gets app events. Vision events are a bonus.
     }
-    const r = await fetch("/api/agent/token", { headers: keyHeaders() });
-    const data = (await r.json()) as { signedUrl?: string; error?: string; agentId?: string; created?: boolean };
-    if (data.created && data.agentId) saveKeys({ ...loadKeys(), elevenlabsAgent: data.agentId });
-    if (!data.signedUrl) {
-      setError(data.error ?? "no signed url");
-      return;
-    }
-    await navigator.mediaDevices.getUserMedia({ audio: true });
-    conv.startSession({
-      signedUrl: data.signedUrl,
-      connectionType: "websocket",
-      overrides: {
-        agent: {
-          prompt: { prompt: tutorPrompt(map, "two open invoices in the AP workbench, December close") },
-          firstMessage: "Hi, I'm your tutor today. I learned this job from Sabine, so I'll coach you the way she thinks. Open the first invoice whenever you're ready, and tell me what you see.",
-          language: "en",
-        },
-      },
-    });
-    setPhase("teaching");
+    const err = await connectAgent(conv, { prompt: tutorPrompt(map, "two open invoices in the AP workbench, December close"), firstMessage: TUTOR_GREETING, language: "en" });
+    if (err) setError(err);
+    else setPhase("teaching");
   }
 
   function finish() {
@@ -196,30 +171,8 @@ function TeachPage() {
     if (session) void saveSession({ ...session, mastery });
   }
 
-  async function useDemo() {
-    // Prefer the session produced by the eval run (real frames + events); fall back to the static map.
-    let s: Session = { id: "demo", startedAt: Date.now(), events: [], frames: [], transcript: [], workMap: DEMO_WORKMAP };
-    try {
-      const r = await fetch("/demo-session.json", { cache: "no-store" });
-      if (r.ok) s = (await r.json()) as Session;
-    } catch {
-      /* static fallback */
-    }
-    await saveSession(s);
-    setSession(s);
-  }
-
   if (session === undefined) return <div className="p-10 text-zinc-400">Loading…</div>;
-  if (!map)
-    return (
-      <div className="mx-auto max-w-xl p-10 text-zinc-200">
-        <h1 className="text-xl font-semibold">No Work Map to teach from</h1>
-        <div className="mt-4 flex gap-2">
-          <Link href="/capture" className="rounded bg-emerald-500 px-3 py-1.5 text-sm font-medium text-black">Go to Capture</Link>
-          <button onClick={useDemo} className="rounded border border-white/15 px-3 py-1.5 text-sm">Load demo Work Map</button>
-        </div>
-      </div>
-    );
+  if (!map) return <NoWorkMap title="No Work Map to teach from" onDemo={() => loadDemoSession().then(setSession)} />;
 
   const connected = conv.status === "connected";
   const replayFrame = replay?.screenMoment.frameId ? session?.frames.find((f) => f.id === replay.screenMoment.frameId) : undefined;
@@ -233,12 +186,7 @@ function TeachPage() {
             <div className="text-xs uppercase tracking-wide text-violet-300">Expert&apos;s screen moment · step {replay.n} · {fmtT(replay.screenMoment.t)}</div>
             <div className="mt-1 text-lg font-medium">{replay.title}</div>
             <div className="mt-3 grid grid-cols-[1fr_1fr] gap-4">
-              {replayFrame ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={replayFrame.dataUrl} alt="" className="w-full rounded ring-1 ring-white/10" />
-              ) : (
-                <div className="flex h-48 items-center justify-center rounded bg-white/5 text-xs text-zinc-500">{replay.screenMoment.caption}</div>
-              )}
+              <MomentPlayer recording={session?.recording} t={replay.screenMoment.t} fallbackUrl={replayFrame?.dataUrl} caption={replay.screenMoment.caption} className="h-48 w-full rounded object-contain ring-1 ring-white/10" />
               <div>
                 <div className="text-sm text-zinc-300">{replay.decision}</div>
                 {replay.reason.quote && <blockquote className="mt-3 border-l-2 border-violet-400 pl-3 italic text-zinc-100">“{replay.reason.quote}”</blockquote>}

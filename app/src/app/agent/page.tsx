@@ -14,7 +14,17 @@ import type { WorkMap } from "@/lib/schemas";
 import { loadSession, type Session } from "@/lib/session-store";
 import type { AgentDecision } from "@/server/agent-decide";
 
-type Entry = { invoiceId: string; status: "thinking" | "applied" | "stopped" | "released" | "error"; decision?: AgentDecision; error?: string };
+type Entry = { invoiceId: string; status: "thinking" | "applied" | "stopped" | "released" | "error"; decision?: AgentDecision; error?: string; recorded?: boolean };
+
+// When the shared Gemini free tier is gone, the demo Work Map still has a recorded live run to fall back on.
+type Recorded = { recordedAt: string; decisions: Record<string, AgentDecision> };
+async function recordedDecision(sessionId: string, invoiceId: string): Promise<AgentDecision | null> {
+  if (!sessionId.startsWith("demo")) return null;
+  const r = await fetch("/demo-agent-decisions.json").catch(() => null);
+  if (!r?.ok) return null;
+  const data = (await r.json()) as Recorded;
+  return data.decisions[invoiceId] ?? null;
+}
 
 export default function AgentPage() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -41,13 +51,20 @@ export default function AgentPage() {
       await new Promise((r) => setTimeout(r, 900));
       const res = await fetch("/api/agent-decide", { method: "POST", headers: { "content-type": "application/json", ...keyHeaders() }, body: JSON.stringify({ workMap: map, invoiceId: inv.id }) });
       const data = (await res.json()) as { ok: true; decision: AgentDecision } | { ok: false; error: string };
-      if (!data.ok) {
-        update(inv.id, { status: "error", error: data.error });
-        continue;
+      let recorded = false;
+      let d: AgentDecision;
+      if (data.ok) d = data.decision;
+      else {
+        const rec = await recordedDecision(session?.id ?? "", inv.id);
+        if (!rec) {
+          update(inv.id, { status: "error", error: data.error });
+          continue;
+        }
+        d = rec;
+        recorded = true;
       }
-      const d = data.decision;
       if (d.action === "stop_and_ask") {
-        update(inv.id, { status: "stopped", decision: d });
+        update(inv.id, { status: "stopped", decision: d, recorded });
         // People keep the judgment call: wait for a human to release or skip this one.
         const go = await new Promise<boolean>((resolve) => (stopGate.current = resolve));
         stopGate.current = null;
@@ -65,7 +82,7 @@ export default function AgentPage() {
       if (d.changes.approval) patch.approval = d.changes.approval;
       if (d.changes.note) patch.note = d.changes.note;
       post({ type: "agent:apply", invoice: inv.id, patch, action: d.finalAction });
-      update(inv.id, { status: "applied", decision: d });
+      update(inv.id, { status: "applied", decision: d, recorded });
       await new Promise((r) => setTimeout(r, 1800));
     }
     setRunning(false);
@@ -130,6 +147,7 @@ export default function AgentPage() {
                     )}
                   </div>
                 )}
+                {e.recorded && <div className="mt-1 text-[10px] text-zinc-500">Gemini free tier exhausted: this decision is replayed from a recorded live run of the same Work Map.</div>}
                 {e.error && <div className="mt-1 text-xs text-rose-300">{e.error}</div>}
                 {e.status === "stopped" && stopped?.invoiceId === e.invoiceId && (
                   <div className="mt-2 flex gap-2">

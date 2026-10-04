@@ -78,5 +78,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 01:54 PT: Capture shows vision failures (quota) in amber and backs off 60 s; DOM events from the sandbox keep the
   demo alive without Gemini. Discord #challenge-01: no replies to the teammate post; HackOS Revision 6 eligible.
 
+- 02:00 PT: /agent falls back to `public/demo-agent-decisions.json` (recorded live run, all 5 correct) when Gemini
+  is exhausted, labelled on each card. Monitor armed: prod 200s + ElevenLabs usage.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

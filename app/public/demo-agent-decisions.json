@@ -1,0 +1,92 @@
+{
+ "recordedAt": "2026-10-04T08:55:39.330Z",
+ "model": "gemini (live run, 4 Oct 2026)",
+ "decisions": {
+  "INV-4490": {
+   "observations": "The invoice is from Müller Maschinenbau GmbH for a spindle drive unit totaling 6400 euros, which is over the 5000 euro capex threshold and includes an asset number.",
+   "applicableGuardrails": [
+    "G1"
+   ],
+   "coveredByMap": true,
+   "uncovered": "",
+   "action": "apply",
+   "changes": {
+    "cost_center": "0400",
+    "asset_number": "AN-2026-0203",
+    "approval": null,
+    "note": null
+   },
+   "finalAction": "save",
+   "reason": "Equipment over five thousand euros net is always capex, cost center 0400.",
+   "askWhom": null
+  },
+  "INV-4491": {
+   "observations": "This is a monthly freight invoice in December from Schwarz Logistik KG, which has history in December.",
+   "applicableGuardrails": [
+    "G3"
+   ],
+   "coveredByMap": true,
+   "uncovered": "",
+   "action": "apply",
+   "changes": {
+    "cost_center": null,
+    "asset_number": null,
+    "approval": null,
+    "note": "check against Nov invoice"
+   },
+   "finalAction": "hold",
+   "reason": "good to know they tend to double-bill in December.",
+   "askWhom": null
+  },
+  "INV-4492": {
+   "observations": "This is an intercompany engineering support invoice from the Czech subsidiary Novák Strojírna s.r.o. for €2100.",
+   "applicableGuardrails": [
+    "G4"
+   ],
+   "coveredByMap": true,
+   "uncovered": "",
+   "action": "apply",
+   "changes": {
+    "cost_center": null,
+    "asset_number": null,
+    "approval": "second",
+    "note": null
+   },
+   "finalAction": "save",
+   "reason": "Anything from the Czech subsidiary Novák goes to the controller for a second approval.",
+   "askWhom": null
+  },
+  "INV-4493": {
+   "observations": "This is a routine office supplies invoice from a known supplier with a history since 2019.",
+   "applicableGuardrails": [],
+   "coveredByMap": true,
+   "uncovered": "",
+   "action": "apply",
+   "changes": {
+    "cost_center": null,
+    "asset_number": null,
+    "approval": null,
+    "note": null
+   },
+   "finalAction": "save",
+   "reason": "",
+   "askWhom": null
+  },
+  "INV-4494": {
+   "observations": "Invoice INV-4494 from Kowalski Metal sp. z o.o., an unknown supplier with no prior history, for €4,850.",
+   "applicableGuardrails": [],
+   "coveredByMap": false,
+   "uncovered": "The supplier Kowalski Metal sp. z o.o. is unknown (not in the Work Map or invoice history) and no guardrail covers unknown suppliers.",
+   "action": "stop_and_ask",
+   "changes": {
+    "cost_center": null,
+    "asset_number": null,
+    "approval": null,
+    "note": null
+   },
+   "finalAction": "none",
+   "reason": "",
+   "askWhom": "the controller, Herr Weber"
+  }
+ }
+}

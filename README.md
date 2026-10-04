@@ -22,7 +22,7 @@
 ## For judges: two ways in
 
 1. **Full loop with your voice (≈6 min).** Open [`/capture`](https://ai-apprentice-nu.vercel.app/capture), share *this tab*, allow the mic, process the three invoices as Sabine ([`docs/demo-script.md`](docs/demo-script.md)). Say "that's it, I'm done" for the debrief, then open the Work Map and Teach.
-2. **Three minutes, no mic.** [`/map`](https://ai-apprentice-nu.vercel.app/map) → "Load demo Work Map" (a session produced by our text-only eval: real frames and screen recording), click a step to replay the moment, then [`/agent`](https://ai-apprentice-nu.vercel.app/agent) → "Process 5 invoices".
+2. **Three minutes, no mic.** [`/map`](https://ai-apprentice-nu.vercel.app/map) → "Load demo Work Map" (a session produced by our text-only eval: real frames and screen recording), click a step to replay the moment, then [`/agent`](https://ai-apprentice-nu.vercel.app/agent) → "Process 5 invoices" (if the shared Gemini tier is gone, it replays a recorded live run of the same Work Map and says so on each card).
 
 Shared keys are free tiers (Gemini: 20 requests per model per day; a full Capture run needs about 30). The **Keys** button on Capture and Teach takes your own ElevenLabs and Gemini keys (browser-only storage); a free key from aistudio.google.com is enough.
 

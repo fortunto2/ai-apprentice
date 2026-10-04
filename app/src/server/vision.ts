@@ -14,11 +14,11 @@ Rules:
 - Ignore the dark side panel on the right edge if present: it is the apprentice's own UI (events list, transcript), not the expert's work.
 - One event per change, summary under 20 words. Do not repeat events listed in RECENT EVENTS.`;
 
-export function describeFrameChange(input: { prev: string | null; curr: string; recent: ReadonlyArray<string> }) {
+export function describeFrameChange(input: { prev: string | null; curr: string; recent: ReadonlyArray<string>; apiKey?: string }) {
   const parts: Part[] = [];
   if (input.prev) parts.push({ text: "PREVIOUS frame:" }, dataUrlToInline(input.prev));
   else parts.push({ text: "No previous frame: describe what is open now as one 'open' or 'navigate' event." });
   parts.push({ text: "CURRENT frame:" }, dataUrlToInline(input.curr));
   parts.push({ text: `RECENT EVENTS:\n${input.recent.slice(-8).join("\n") || "(none)"}` });
-  return generateStructured({ stage: "vision", model: VISION_MODEL, schema: VisionResult, system: SYSTEM, parts, timeoutMs: 20_000 });
+  return generateStructured({ stage: "vision", model: VISION_MODEL, schema: VisionResult, system: SYSTEM, parts, timeoutMs: 20_000, apiKey: input.apiKey });
 }

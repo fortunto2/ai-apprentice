@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FrameCapture, type Frame } from "./frame-capture";
 import type { ErpMessage, ErpState } from "./erp-bridge";
 import type { ScreenEvent, VisionResult } from "./schemas";
+import { keyHeaders } from "./byok";
 
 export type Activity = "typing" | "mouse" | "talking" | "agent" | "idle";
 
@@ -122,7 +123,7 @@ export function useScreenWatch(opts: {
       try {
         const res = await fetch("/api/vision", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", ...keyHeaders() },
           body: JSON.stringify({ prev: prev?.dataUrl ?? null, curr: frame.dataUrl, recent: eventsRef.current.slice(-8).map((e) => e.summary) }),
         });
         const data = (await res.json()) as ({ ok: true } & VisionResult) | { ok: false; error: string };

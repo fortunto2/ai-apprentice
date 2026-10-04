@@ -15,6 +15,8 @@ import { tutorPrompt } from "@/lib/prompts";
 import type { MasteryItem, TranscriptLine, WorkMap, WorkMapStep } from "@/lib/schemas";
 import { fmtT, loadSession, saveSession, type Session } from "@/lib/session-store";
 import { useScreenWatch } from "@/lib/use-screen-watch";
+import { keyHeaders, loadKeys, saveKeys } from "@/lib/byok";
+import { SettingsButton } from "@/components/settings";
 
 type Phase = "idle" | "teaching" | "done";
 
@@ -165,8 +167,9 @@ function TeachPage() {
     } catch {
       // No screen share: the tutor still gets app events. Vision events are a bonus.
     }
-    const r = await fetch("/api/agent/token");
-    const data = (await r.json()) as { signedUrl?: string; error?: string };
+    const r = await fetch("/api/agent/token", { headers: keyHeaders() });
+    const data = (await r.json()) as { signedUrl?: string; error?: string; agentId?: string; created?: boolean };
+    if (data.created && data.agentId) saveKeys({ ...loadKeys(), elevenlabsAgent: data.agentId });
     if (!data.signedUrl) {
       setError(data.error ?? "no signed url");
       return;
@@ -266,6 +269,7 @@ function TeachPage() {
             <button onClick={finish} className="rounded-md bg-violet-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-400">Finish session</button>
           )}
           <Link href="/map" className="rounded-md border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5">Work Map</Link>
+          <SettingsButton />
         </div>
         {error && <div className="mx-4 mt-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>}
 

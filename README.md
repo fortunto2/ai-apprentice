@@ -134,8 +134,8 @@ demo/video              submission videos and the slides they were cut from
 One expert, one task, one new hire today. Next: the apprentice runs in the background of everyday work, already
 holding the Work Map, and speaks only when a case does not match any rule, one question at the pause. Every answer
 updates the map; the map's guardrails let agents take the routine steps while people keep the judgment calls.
-Our first field is AV operations at Epiphan Video, where a Rust sales coach ("Souffleur") already listens to calls
-and reads the screen; what it lacked was a source of rules. The apprentice is that source.
+Our first field is AV operations and sales desks at Epiphan Video, where a real-time coaching assistant already
+listens to calls and reads the screen; what it lacked was a source of rules. The apprentice is that source.
 
 Team SuperDuper: Rustam Salavatov (build) and Azaliya Salavatova (marketing, testing: she played the new hire).
 MIT License.

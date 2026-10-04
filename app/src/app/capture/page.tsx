@@ -12,6 +12,8 @@ import { LANG_NAMES, debriefPrompt, interviewerPrompt } from "@/lib/prompts";
 import type { ScreenEvent, TranscriptLine, WorkMap } from "@/lib/schemas";
 import { fmtT, saveSession, type Session } from "@/lib/session-store";
 import { useScreenWatch } from "@/lib/use-screen-watch";
+import { keyHeaders, loadKeys, saveKeys } from "@/lib/byok";
+import { SettingsButton } from "@/components/settings";
 
 type Phase = "idle" | "capturing" | "synthesizing" | "debrief" | "finalizing" | "done";
 
@@ -145,8 +147,9 @@ function CapturePage() {
 
   async function connect(prompt: string, firstMessage: string) {
     for (let i = 0; i < 20 && conv.status !== "disconnected"; i++) await new Promise((r) => setTimeout(r, 250));
-    const r = await fetch("/api/agent/token");
-    const data = (await r.json()) as { signedUrl?: string; error?: string };
+    const r = await fetch("/api/agent/token", { headers: keyHeaders() });
+    const data = (await r.json()) as { signedUrl?: string; error?: string; agentId?: string; created?: boolean };
+    if (data.created && data.agentId) saveKeys({ ...loadKeys(), elevenlabsAgent: data.agentId });
     if (!data.signedUrl) {
       setError(data.error ?? "no signed url");
       return;
@@ -178,7 +181,7 @@ function CapturePage() {
     const taskTranscript = transcriptRef.current;
     const res = await fetch("/api/workmap", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...keyHeaders() },
       body: JSON.stringify({ events: watch.events, transcript: taskTranscript, expertName: "the expert" }),
     });
     const data = (await res.json()) as { ok: true; workMap: WorkMap } | { ok: false; error: string };
@@ -203,7 +206,7 @@ function CapturePage() {
     const task = transcriptRef.current.filter((l) => l.t < debriefStartT.current);
     const res = await fetch("/api/workmap", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...keyHeaders() },
       body: JSON.stringify({ events: watch.events, transcript: task, debrief, previous: workMap, expertName: "the expert" }),
     });
     const data = (await res.json()) as { ok: true; workMap: WorkMap } | { ok: false; error: string };
@@ -276,6 +279,7 @@ function CapturePage() {
               ))}
             </select>
           )}
+          <SettingsButton />
           <button onClick={toggleMask} className={`rounded-md border px-3 py-1.5 text-sm ${mask ? "border-emerald-400 text-emerald-300" : "border-white/15 hover:bg-white/5"}`}>
             {mask ? "PII masked" : "Mask PII"}
           </button>

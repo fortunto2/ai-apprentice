@@ -53,6 +53,7 @@ export function synthesizeWorkMap(input: {
   debrief?: ReadonlyArray<TranscriptLine>;
   previous?: WorkMap;
   expertName?: string;
+  apiKey?: string;
 }) {
   const fmt = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
   const events = input.events
@@ -76,5 +77,6 @@ export function synthesizeWorkMap(input: {
     parts,
     temperature: 0.2,
     timeoutMs: 60_000,
+    apiKey: input.apiKey,
   }).pipe(Effect.map((a) => a.workMap));
 }

@@ -15,7 +15,7 @@ const decodeBody = S.decodeUnknownSync(Body);
 export async function POST(req: Request) {
   const body = decodeBody(await req.json());
   const result = await Effect.runPromise(
-    describeFrameChange({ prev: body.prev, curr: body.curr, recent: body.recent ?? [] }).pipe(
+    describeFrameChange({ prev: body.prev, curr: body.curr, recent: body.recent ?? [], apiKey: req.headers.get("x-gemini-key")?.trim() || undefined }).pipe(
       Effect.map((r) => ({ ok: true as const, ...r })),
       Effect.catch((e) => Effect.succeed({ ok: false as const, error: `${e._tag}: ${String("cause" in e ? e.cause : e)}` })),
     ),

@@ -1,5 +1,5 @@
 // Text-only ElevenLabs conversation over a raw WebSocket (Node 22, no browser, no audio) plus a
-// Gemini-played expert persona. Mirrors the Souffleur sim pattern: scripted screen, LLM counterpart,
+// Gemini-played expert persona. Same pattern as an LLM-vs-LLM sales-call simulator: scripted screen, LLM counterpart,
 // real agent, invariants checked afterwards.
 
 export type ToolHandler = (name: string, params: Record<string, unknown>) => Promise<string | void> | string | void;

@@ -12,8 +12,8 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{ readonly stag
 
 // Free-tier quotas are per key and per model, so a 429 rotates to the next key, then the next model.
 const clients = new Map<string, GoogleGenAI>();
-function keys(): string[] {
-  const k = [process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY, process.env.GEMINI_API_KEY_2].filter((x): x is string => Boolean(x));
+function keys(override?: string): string[] {
+  const k = [override, process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY, process.env.GEMINI_API_KEY_2].filter((x): x is string => Boolean(x));
   if (!k.length) throw new Error("GEMINI_API_KEY missing");
   return [...new Set(k)];
 }
@@ -28,10 +28,10 @@ function gemini(apiKey: string) {
 const MODEL_FALLBACKS = (process.env.MODEL_FALLBACKS ?? "gemini-3.8-flash,gemini-3.5-flash-lite").split(",").filter(Boolean);
 const isQuota = (e: unknown) => /429|RESOURCE_EXHAUSTED|quota/i.test(String(e));
 
-async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">) {
+async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">, override?: string) {
   let last: unknown;
   for (const m of [model, ...MODEL_FALLBACKS.filter((x) => x !== model)]) {
-    for (const key of keys()) {
+    for (const key of keys(override)) {
       try {
         return await gemini(key).models.generateContent({ ...req, model: m });
       } catch (e) {
@@ -67,6 +67,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
   parts: Part[];
   temperature?: number;
   timeoutMs?: number;
+  apiKey?: string;
 }): Effect.Effect<S["Type"], LlmError | DecodeError> {
   const jsonSchema = toGeminiSchema(opts.schema);
   const decode = Schema.decodeUnknownSync(opts.schema);
@@ -80,7 +81,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
           responseJsonSchema: jsonSchema,
           temperature: opts.temperature ?? 0.2,
         },
-      }),
+      }, opts.apiKey),
     catch: (cause) => new LlmError({ stage: opts.stage, cause }),
   });
   return call.pipe(

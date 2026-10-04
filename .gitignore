@@ -6,3 +6,6 @@ dist/
 __pycache__/
 .DS_Store
 .vercel/
+demo/video/*.mp3
+demo/video/slides/
+demo/video/concat-*.txt

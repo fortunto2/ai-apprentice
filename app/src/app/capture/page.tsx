@@ -40,6 +40,7 @@ function CapturePage() {
   const [workMap, setWorkMap] = useState<WorkMap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<ScreenEvent | null>(null);
+  const [gateInfo, setGateInfo] = useState({ unasked: 0, waitS: 0, budget: 0, reason: "" });
   const iframe = useRef<HTMLIFrameElement>(null);
   const lastAsk = useRef(0);
   const unaskedEvents = useRef<ScreenEvent[]>([]);
@@ -97,12 +98,26 @@ function CapturePage() {
     const id = window.setInterval(() => {
       const g = gate.current;
       const c = convRef.current;
-      if (phaseRef.current !== "capturing" || c.status !== "connected") return;
-      if (g.activity !== "idle" || c.isSpeaking) return;
       const sinceAsk = Date.now() - lastAsk.current;
       const elapsedMin = Math.max(1, (Date.now() - startedAt.current) / 60_000);
       const budget = Math.ceil((BUDGET_PER_10MIN * elapsedMin) / 10) + 1;
-      if (sinceAsk < MIN_GAP_MS || unaskedEvents.current.length === 0 || g.questions >= budget) return;
+      const waitS = Math.max(0, Math.ceil((MIN_GAP_MS - sinceAsk) / 1000));
+      const reason =
+        phaseRef.current !== "capturing" || c.status !== "connected"
+          ? ""
+          : g.activity !== "idle"
+            ? `expert is ${g.activity === "agent" ? "listening to me" : g.activity}`
+            : c.isSpeaking
+              ? "I am speaking"
+              : unaskedEvents.current.length === 0
+                ? "nothing new on screen"
+                : g.questions >= budget
+                  ? "question budget used, saving it for the debrief"
+                  : waitS > 0
+                    ? `spacing: next question in ${waitS}s`
+                    : "asking now";
+      setGateInfo((prev) => (prev.unasked === unaskedEvents.current.length && prev.waitS === waitS && prev.budget === budget && prev.reason === reason ? prev : { unasked: unaskedEvents.current.length, waitS, budget, reason }));
+      if (reason !== "asking now") return;
       const recent = unaskedEvents.current.splice(0).slice(-6);
       lastAsk.current = Date.now();
       c.sendUserMessage(pauseMsg(g.idleMs, recent));
@@ -254,6 +269,12 @@ function CapturePage() {
           )}
         </div>
 
+        {phase === "capturing" && (
+          <div className="flex items-center gap-3 border-b border-white/10 px-4 py-1.5 font-mono text-[11px] text-zinc-400" title="Pause gate: when the apprentice may speak">
+            <span className={gateInfo.reason === "asking now" ? "text-emerald-300" : ""}>gate: {gateInfo.reason || "waiting for connection"}</span>
+            <span className="ml-auto">{gateInfo.unasked} unasked · {questions}/{gateInfo.budget} budget</span>
+          </div>
+        )}
         {error && <div className="mx-4 mt-2 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>}
         {phase === "synthesizing" && <div className="mx-4 mt-2 text-xs text-zinc-400">Merging {watch.events.length} screen events and the transcript into a Work Map draft…</div>}
         {phase === "finalizing" && <div className="mx-4 mt-2 text-xs text-zinc-400">Folding the debrief into the Work Map…</div>}

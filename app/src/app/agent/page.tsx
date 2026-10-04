@@ -147,7 +147,7 @@ export default function AgentPage() {
                     )}
                   </div>
                 )}
-                {e.recorded && <div className="mt-1 text-[10px] text-zinc-500">Gemini free tier exhausted: this decision is replayed from a recorded live run of the same Work Map.</div>}
+                {e.recorded && <div className="mt-1 text-[10px] text-zinc-500">Live Gemini call failed (free tier or key): this decision is replayed from a recorded live run of the same Work Map.</div>}
                 {e.error && <div className="mt-1 text-xs text-rose-300">{e.error}</div>}
                 {e.status === "stopped" && stopped?.invoiceId === e.invoiceId && (
                   <div className="mt-2 flex gap-2">

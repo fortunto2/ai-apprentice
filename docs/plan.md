@@ -48,9 +48,9 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - [ ] HackOS wants THREE videos ≤60 s each (MP4/MOV): team introduction, product demo, technical walkthrough + team photo (JPG/PNG) + GitHub link + live URL (https://ai-apprentice-nu.vercel.app). Notes: docs/pitch.md
 - [ ] HackOS (team 'SuperDuper' exists, 1 member) + Google Form submit by 05:45
 
-## Status Sun 4 Oct 03:10 PT — SUBMITTED
-- HackOS: project "AI Apprentice", challenge 01, submitted 02:35 PT (eligible, 3/3 videos, photo). Edits open until 06:15.
-- Google Form: submitted 02:50 PT ("Your response has been recorded"), responder info@life2film.com, team emails rust.starman + azaika2019.
+## Status Sun 4 Oct 00:45 PT — SUBMITTED
+- HackOS: project "AI Apprentice", challenge 01, submitted 00:32 PT (eligible, 3/3 videos, photo). Edits open until 06:15.
+- Google Form: submitted 00:38 PT ("Your response has been recorded"), responder info@life2film.com, team emails rust.starman + azaika2019.
 - Videos: demo/video/01-team-introduction.mp4 (29 s), 02-product-demo.mp4 (39 s), 03-technical-walkthrough.mp4 (43 s). Narration: ElevenLabs TTS.
 - Eval `pnpm eval`: 23/23 (text-only, real agent). Demo session with frames in app/public/demo-session.json.
 - BYOK: "Keys" button on /capture and /teach; agent auto-created in the visitor's ElevenLabs account.

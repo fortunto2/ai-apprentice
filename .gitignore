@@ -9,3 +9,4 @@ __pycache__/
 demo/video/*.mp3
 demo/video/slides/
 demo/video/concat-*.txt
+demo/team-photo.jpg

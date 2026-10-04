@@ -81,5 +81,8 @@ Started Sat 3.10.2026 16:00 PT. Deadline Sun 06:00 PT. Solo unless a teammate sh
 - 02:00 PT: /agent falls back to `public/demo-agent-decisions.json` (recorded live run, all 5 correct) when Gemini
   is exhausted, labelled on each card. Monitor armed: prod 200s + ElevenLabs usage.
 
+- 05:56 PT: four minutes before the deadline HackOS still shows submitted · eligible · Revision 6; prod 200 on all
+  pages for the whole 4 h watch, ElevenLabs credits untouched (0/10000), no Discord replies. Nothing left to change.
+
 ## Blocked on Rustam
 - Real voice run on https://ai-apprentice-nu.vercel.app/capture (credits exist now). Budget: ~10 min of talk.

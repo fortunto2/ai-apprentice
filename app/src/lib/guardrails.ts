@@ -1,8 +1,8 @@
 // Evaluates machine-checkable guardrails (from the Work Map) against the ERP state.
 // This is the "agent-ready guardrails" export in action: the same JSON an agent would load.
 
-import type { ErpState } from "./erp-bridge";
-import type { Guardrail, GuardrailCheck } from "./schemas";
+import type { ErpState } from "./erp-bridge.ts";
+import type { Guardrail, GuardrailCheck } from "./schemas.ts";
 
 type Cond = GuardrailCheck["must"];
 

@@ -76,6 +76,9 @@ function CapturePage() {
         return `Removed ${n} screen events and the last minute of the expert's words from the record.`;
       },
       end_task: async () => {
+        // Guard against premature calls: the expert must have just said they are done.
+        const recent = transcriptRef.current.filter((l) => l.role === "expert").slice(-2).map((l) => l.text).join(" ");
+        if (!/done|finish|wrap|that'?s it|all set|complete/i.test(recent)) return "The expert has not said the task is finished. Keep listening.";
         void endTask();
       },
       confirm_teachback: async ({ confirmed, corrections }: { confirmed: boolean; corrections?: string }) => {

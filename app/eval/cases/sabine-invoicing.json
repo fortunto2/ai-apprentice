@@ -1,0 +1,40 @@
+{
+  "id": "sabine-invoicing",
+  "language": "en",
+  "expert": {
+    "name": "Sabine",
+    "persona": "You are Sabine, 57, accounts payable lead at a machine builder near Stuttgart, 24 years on the job, two days before month-end close.\n- Equipment over five thousand euros net (without VAT) is always capex, cost center 0400. Below that it stays opex 4711, nobody cares.\n- No asset number, no capex booking. If you cannot find an asset number you ask the controller (Herr Weber) before you save.\n- Schwarz Logistik double-bills every December: they send the November freight again. You hold the December invoice until you have compared it with November, then release or reject it yourself. Only Schwarz does this.\n- Anything from the Czech subsidiary (Novák) goes to the controller for a second approval, intercompany, it has to match on their side. Other subsidiaries too, but only the Czech one invoices you.\n- Unknown supplier you have never seen: stop and ask the controller, never approve on your own.\n- You would never approve an invoice without a PO number above ten thousand euros.\n- The limit per invoice is on the net total, not per line."
+  },
+  "timeline": [
+    { "t": 5000, "event": { "id": "d1", "kind": "open", "summary": "INV-4471 opened: Müller Maschinenbau GmbH, €7,850, Hydraulic press unit HP-220", "invoice": "INV-4471", "frameId": "s1" } },
+    { "t": 9000, "event": { "id": "v2", "kind": "navigate", "summary": "Invoice INV-4471 detail shown: supplier [PERSON] contact, cost center 4711, asset number empty", "invoice": "INV-4471", "frameId": "s1" } },
+    { "t": 21000, "event": { "id": "d3", "kind": "change", "summary": "INV-4471: cost center changed from \"4711\" to \"0400\"", "invoice": "INV-4471", "field": "cost center", "from": "4711", "to": "0400", "frameId": "s2" } },
+    { "t": 25000, "pause": true },
+    { "t": 40000, "event": { "id": "d4", "kind": "change", "summary": "INV-4471: asset number set to AN-2026-0187", "invoice": "INV-4471", "field": "asset number", "from": "", "to": "AN-2026-0187", "frameId": "s3" } },
+    { "t": 44000, "pause": true },
+    { "t": 52000, "event": { "id": "d5", "kind": "save", "summary": "INV-4471 approved and saved: cost center 0400, asset AN-2026-0187, approval standard", "invoice": "INV-4471", "frameId": "s4" } },
+    { "t": 70000, "event": { "id": "d6", "kind": "open", "summary": "INV-4472 opened: Schwarz Logistik KG, €1,240, Monthly freight, December", "invoice": "INV-4472", "frameId": "s5" } },
+    { "t": 90000, "say": "Schwarz again. December." },
+    { "t": 95000, "event": { "id": "d7", "kind": "hold", "summary": "INV-4472 put on hold: \"check against Nov invoice\"", "invoice": "INV-4472", "frameId": "s6" } },
+    { "t": 99000, "pause": true },
+    { "t": 110000, "event": { "id": "d8", "kind": "open", "summary": "INV-4473 opened: Novák Strojírna s.r.o., €3,900, Engineering support, intercompany", "invoice": "INV-4473", "frameId": "s7" } },
+    { "t": 130000, "event": { "id": "d9", "kind": "change", "summary": "INV-4473: approval changed from \"standard\" to \"second\"", "invoice": "INV-4473", "field": "approval", "from": "standard", "to": "second", "frameId": "s8" } },
+    { "t": 134000, "pause": true },
+    { "t": 140000, "event": { "id": "d10", "kind": "save", "summary": "INV-4473 approved and saved: cost center 6100, asset none, approval second", "invoice": "INV-4473", "frameId": "s9" } },
+    { "t": 150000, "say": "Off the record: the controller is on sick leave until January, so I sign those myself this month." },
+    { "t": 160000, "say": "That's it, I'm done." }
+  ],
+  "newHire": {
+    "case": "INV-4480, Bauer Technik AG, €7,200, CNC spindle motor, pre-coded 4711",
+    "wrongState": { "invoice": "INV-4480", "amount": 7200, "supplier": "Bauer Technik AG", "cost_center": "4711", "asset_number": "", "approval": "standard", "status": "open", "note": "" },
+    "prediction": "I think it stays on 4711, it's a replacement part, so opex.",
+    "fix": "Ah, because it's over five thousand. So capex, 0400, and I need an asset number.",
+    "fixedState": { "invoice": "INV-4480", "amount": 7200, "supplier": "Bauer Technik AG", "cost_center": "0400", "asset_number": "AN-2026-0202", "approval": "standard", "status": "open", "note": "" }
+  },
+  "expect": {
+    "capture": { "minQuestions": 3, "guardrailQuestion": true, "silentPauseAllowed": true, "offTheRecord": true, "endTask": true },
+    "workmap": { "minSteps": 4, "maxSteps": 9, "minGuardrails": 3, "minChecks": 2, "quotesVerbatim": true, "minGaps": 2 },
+    "debrief": { "minQuestions": 3, "teachBack": true, "confirm": true },
+    "teach": { "stepsIn": true, "replay": true, "mastery": true }
+  }
+}

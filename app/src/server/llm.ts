@@ -4,20 +4,44 @@
 import { GoogleGenAI } from "@google/genai";
 import { Data, Duration, Effect, Schedule, Schema } from "effect";
 
-export const VISION_MODEL = process.env.VISION_MODEL ?? "gemini-3.5-flash";
-export const SYNTH_MODEL = process.env.SYNTH_MODEL ?? "gemini-3.5-flash";
+export const VISION_MODEL = process.env.VISION_MODEL ?? "gemini-2.5-flash";
+export const SYNTH_MODEL = process.env.SYNTH_MODEL ?? "gemini-2.5-flash";
 
 export class LlmError extends Data.TaggedError("LlmError")<{ readonly stage: string; readonly cause: unknown }> {}
 export class DecodeError extends Data.TaggedError("DecodeError")<{ readonly stage: string; readonly raw: string; readonly cause: unknown }> {}
 
-let client: GoogleGenAI | null = null;
-function gemini() {
-  if (!client) {
-    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY missing");
-    client = new GoogleGenAI({ apiKey });
+// Free-tier quotas are per key and per model, so a 429 rotates to the next key, then the next model.
+const clients = new Map<string, GoogleGenAI>();
+function keys(): string[] {
+  const k = [process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY, process.env.GEMINI_API_KEY_2].filter((x): x is string => Boolean(x));
+  if (!k.length) throw new Error("GEMINI_API_KEY missing");
+  return [...new Set(k)];
+}
+function gemini(apiKey: string) {
+  let c = clients.get(apiKey);
+  if (!c) {
+    c = new GoogleGenAI({ apiKey });
+    clients.set(apiKey, c);
   }
-  return client;
+  return c;
+}
+const MODEL_FALLBACKS = (process.env.MODEL_FALLBACKS ?? "gemini-3.8-flash,gemini-3.5-flash-lite").split(",").filter(Boolean);
+const isQuota = (e: unknown) => /429|RESOURCE_EXHAUSTED|quota/i.test(String(e));
+
+async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGenAI["models"]["generateContent"]>[0], "model">) {
+  let last: unknown;
+  for (const m of [model, ...MODEL_FALLBACKS.filter((x) => x !== model)]) {
+    for (const key of keys()) {
+      try {
+        return await gemini(key).models.generateContent({ ...req, model: m });
+      } catch (e) {
+        last = e;
+        if (!isQuota(e)) throw e;
+        console.warn(`[llm] quota on ${m} with key …${key.slice(-4)}, rotating`);
+      }
+    }
+  }
+  throw last;
 }
 
 export type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -48,8 +72,7 @@ export function generateStructured<S extends Schema.ConstraintDecoder<unknown>>(
   const decode = Schema.decodeUnknownSync(opts.schema);
   const call = Effect.tryPromise({
     try: () =>
-      gemini().models.generateContent({
-        model: opts.model,
+      generateWithRotation(opts.model, {
         contents: [{ role: "user", parts: opts.parts }],
         config: {
           systemInstruction: opts.system,

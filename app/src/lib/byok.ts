@@ -18,6 +18,7 @@ export function loadKeys(): Keys {
 export function saveKeys(k: Keys) {
   try {
     localStorage.setItem(KEY, JSON.stringify(k));
+    window.dispatchEvent(new Event("apprentice:keys"));
   } catch {
     /* private mode */
   }
@@ -32,7 +33,20 @@ export function keyHeaders(): Record<string, string> {
   return h;
 }
 
-export function hasOwnKeys() {
-  const k = loadKeys();
-  return Boolean(k.elevenlabs || k.gemini);
+// Raw snapshot for useSyncExternalStore: strings compare by value, so the store stays stable.
+export function keysSnapshot(): string {
+  try {
+    return localStorage.getItem(KEY) ?? "{}";
+  } catch {
+    return "{}";
+  }
+}
+
+export function subscribeKeys(cb: () => void) {
+  window.addEventListener("storage", cb);
+  window.addEventListener("apprentice:keys", cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("apprentice:keys", cb);
+  };
 }

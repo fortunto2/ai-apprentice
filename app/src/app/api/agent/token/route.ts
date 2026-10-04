@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   const apiKey = ownKey || process.env.ELEVENLABS_API_KEY;
   let agentId = ownKey ? req.headers.get("x-elevenlabs-agent")?.trim() || "" : process.env.ELEVENLABS_AGENT_ID;
   if (!apiKey) return NextResponse.json({ error: "No ElevenLabs key: set ELEVENLABS_API_KEY or enter your own key in Settings." }, { status: 503 });
+  if (!ownKey && !agentId) return NextResponse.json({ error: "ELEVENLABS_AGENT_ID missing in .env.local (run pnpm agent:create)." }, { status: 503 });
 
   let created = false;
   if (!agentId) {
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
     headers: { "xi-api-key": apiKey },
     cache: "no-store",
   });
-  if (!res.ok) return NextResponse.json({ error: await res.text() }, { status: res.status });
+  if (!res.ok) return NextResponse.json({ error: await res.text(), agentId, created }, { status: res.status });
   const data = (await res.json()) as { signed_url: string };
   return NextResponse.json({ signedUrl: data.signed_url, agentId, created, ownKey: Boolean(ownKey) });
 }

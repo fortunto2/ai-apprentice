@@ -2,7 +2,7 @@
 // path (/api/agent/token creates an agent in the visitor's account when they supply only a key).
 
 import type { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { INTERVIEWER_PROMPT } from "@/lib/prompts";
+import { INTERVIEWER_PROMPT } from "../lib/prompts.ts";
 
 type CreateBody = Parameters<ElevenLabsClient["conversationalAi"]["agents"]["create"]>[0];
 
@@ -10,7 +10,8 @@ const obj = (properties: Record<string, { type: "string" | "number" | "boolean";
   ({ type: "object" as const, properties, required }) as never;
 
 export function agentConfig(opts: { llm?: string; voiceId?: string } = {}): CreateBody {
-  const llm = (opts.llm ?? process.env.AGENT_LLM ?? "gemini-2.5-flash") as never;
+  // The agent LLM runs on ElevenLabs' side, not on our Gemini key: keep the model the eval was run against.
+  const llm = (opts.llm ?? process.env.AGENT_LLM ?? "gemini-3.5-flash") as never;
   const voiceId = opts.voiceId ?? process.env.AGENT_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL"; // Sarah
   return {
     name: "AI Apprentice",

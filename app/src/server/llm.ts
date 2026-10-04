@@ -13,11 +13,14 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{ readonly stag
 // Free-tier quotas are per key and per model, so a 429 rotates to the next key, then the next model.
 const clients = new Map<string, GoogleGenAI>();
 function keys(override?: string): string[] {
-  const k = [override, process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY, process.env.GEMINI_API_KEY_2].filter((x): x is string => Boolean(x));
+  // A visitor's own key never falls through to the shared ones: their quota, their problem.
+  if (override) return [override];
+  const k = [process.env.GEMINI_API_KEY, process.env.GOOGLE_API_KEY, process.env.GEMINI_API_KEY_2].filter((x): x is string => Boolean(x));
   if (!k.length) throw new Error("GEMINI_API_KEY missing");
   return [...new Set(k)];
 }
-function gemini(apiKey: string) {
+function gemini(apiKey: string, cache = true) {
+  if (!cache) return new GoogleGenAI({ apiKey });
   let c = clients.get(apiKey);
   if (!c) {
     c = new GoogleGenAI({ apiKey });
@@ -33,7 +36,7 @@ async function generateWithRotation(model: string, req: Omit<Parameters<GoogleGe
   for (const m of [model, ...MODEL_FALLBACKS.filter((x) => x !== model)]) {
     for (const key of keys(override)) {
       try {
-        return await gemini(key).models.generateContent({ ...req, model: m });
+        return await gemini(key, key !== override).models.generateContent({ ...req, model: m });
       } catch (e) {
         last = e;
         if (!isQuota(e)) throw e;

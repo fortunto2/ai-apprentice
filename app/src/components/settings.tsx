@@ -3,18 +3,23 @@
 // Bring-your-own-key panel. A judge with their own ElevenLabs / Gemini credits can run the whole
 // demo without touching our quota.
 
-import { useState } from "react";
-import { loadKeys, saveKeys, type Keys } from "@/lib/byok";
+import { useState, useSyncExternalStore } from "react";
+import { keysSnapshot, loadKeys, saveKeys, subscribeKeys, type Keys } from "@/lib/byok";
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
-  const [keys, setKeys] = useState<Keys>(() => (typeof window === "undefined" ? {} : loadKeys()));
-  const own = Boolean(keys.elevenlabs || keys.gemini);
+  // Saved keys, hydration-safe: the server snapshot is "{}" so the first client render matches it.
+  const saved = JSON.parse(useSyncExternalStore(subscribeKeys, keysSnapshot, () => "{}")) as Keys;
+  const [keys, setKeys] = useState<Keys>({});
+  const own = Boolean(saved.elevenlabs || saved.gemini);
 
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setKeys(loadKeys());
+          setOpen(true);
+        }}
         className={`rounded-md border px-2.5 py-1.5 text-sm ${own ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-zinc-300 hover:bg-white/5"}`}
         title="Use your own API keys"
       >
@@ -35,7 +40,7 @@ export function SettingsButton() {
                 value={keys.elevenlabs ?? ""}
                 onChange={(e) => setKeys({ ...keys, elevenlabs: e.target.value.trim(), elevenlabsAgent: "" })}
               />
-              <span className="text-[11px] text-zinc-500">An agent is created in your account on first use (id: {keys.elevenlabsAgent || "none yet"}).</span>
+              <span className="text-[11px] text-zinc-500">An agent is created in your account on first use (id: {saved.elevenlabsAgent || "none yet"}).</span>
             </label>
             <label className="mt-3 block text-xs text-zinc-400">
               Gemini API key (vision + Work Map)

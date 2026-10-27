@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://ai-apprentice-nu.vercel.app"><b>Live demo</b></a> ·
+  <a href="https://rustman.org/posts/hack-nation-ai-apprentice-2026/"><b>Write-up</b></a> ·
   <a href="docs/demo-script.md">Demo script</a> ·
   <a href="docs/pitch.md">Pitch &amp; moonshot</a> ·
   <a href="https://ai-apprentice-nu.vercel.app/architecture">Architecture page</a> ·
